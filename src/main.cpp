@@ -160,6 +160,38 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
+bool lane_is_occupied(const int lane,
+                      const vector<vector<double>>& sensor_fusion,
+                      const size_t prev_size,
+                      const double car_s)
+{
+    const float lane_width = 4;
+
+    for (const auto& sensed_car : sensor_fusion)
+    {
+        float d = sensed_car[0];
+        if (d < (lane_width * lane + lane_width) && d > (lane_width * lane))
+        {
+            double vx = sensed_car[3];
+            double vy = sensed_car[4];
+            double check_speed = sqrt(vx * vx + vy * vy);
+            double check_car_s = sensed_car[5];
+
+            for (size_t i = 0; i < prev_size; i++)
+            {
+                check_car_s += 0.02 * check_speed;
+
+                if ((check_car_s > car_s) && ((check_car_s - car_s) < 30))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 int main() {
   uWS::Hub h;
 
@@ -236,7 +268,10 @@ int main() {
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
 
-            const int lane = car_d / 4;
+            const int car_lane = car_d / 4;
+
+            // Keep lane by default.
+            int target_lane = car_lane;
 
             vector<double> ptsx;
             vector<double> ptsy;
@@ -252,25 +287,7 @@ int main() {
                 car_s = end_path_s;
             }
 
-            bool too_close = false;
-            for (const auto& sensed_car : sensor_fusion)
-            {
-                float d = sensed_car[0];
-                if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
-                {
-                    double vx = sensed_car[3];
-                    double vy = sensed_car[4];
-                    double check_speed = sqrt(vx * vx + vy * vy);
-                    double check_car_s = sensed_car[5];
-
-                    check_car_s += static_cast<double>(prev_size * 0.02 * check_speed);
-
-                    if ((check_car_s > car_s) && ((check_car_s - car_s) < 30))
-                    {
-                        too_close = true;
-                    }
-                }
-            }
+            bool too_close = lane_is_occupied(car_lane, sensor_fusion, prev_size, car_s);
 
             const double ideal_vel = 49.5;
             const double ref_vel_inc = 0.224;
@@ -278,6 +295,24 @@ int main() {
             if (too_close)
             {
                 ref_vel -= ref_vel_inc;
+
+                const int lane_count = 3;
+
+                for (int lane_check = 0; lane_check < lane_count; lane_check++)
+                {
+                    if (lane_check == car_lane)
+                    {
+                        continue;
+                    }
+
+                    bool occupied = lane_is_occupied(lane_check, sensor_fusion, prev_size, car_s);
+
+                    if (!occupied)
+                    {
+                        target_lane = lane_check;
+                        break;
+                    }
+                }
             }
             else if (ref_vel < ideal_vel)
             {
@@ -311,9 +346,9 @@ int main() {
                 ptsy.push_back(ref_y);
             }
 
-            auto next_wp0 = getXY(car_s + 30, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-            auto next_wp1 = getXY(car_s + 60, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-            auto next_wp2 = getXY(car_s + 90, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            auto next_wp0 = getXY(car_s + 30, (2 + 4 * target_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            auto next_wp1 = getXY(car_s + 60, (2 + 4 * target_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            auto next_wp2 = getXY(car_s + 90, (2 + 4 * target_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
             ptsx.push_back(next_wp0[0]);
             ptsx.push_back(next_wp1[0]);
