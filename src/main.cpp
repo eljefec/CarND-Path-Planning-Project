@@ -197,7 +197,9 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  double ref_vel = 20; // mph
+
+  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -234,6 +236,8 @@ int main() {
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
 
+            const int lane = car_d / 4;
+
             vector<double> ptsx;
             vector<double> ptsy;
 
@@ -242,6 +246,43 @@ int main() {
             double ref_yaw = deg2rad(car_yaw);
 
             const auto prev_size = previous_path_x.size();
+
+            if (prev_size > 0)
+            {
+                car_s = end_path_s;
+            }
+
+            bool too_close = false;
+            for (const auto& sensed_car : sensor_fusion)
+            {
+                float d = sensed_car[0];
+                if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
+                {
+                    double vx = sensed_car[3];
+                    double vy = sensed_car[4];
+                    double check_speed = sqrt(vx * vx + vy * vy);
+                    double check_car_s = sensed_car[5];
+
+                    check_car_s += static_cast<double>(prev_size * 0.02 * check_speed);
+
+                    if ((check_car_s > car_s) && ((check_car_s - car_s) < 30))
+                    {
+                        too_close = true;
+                    }
+                }
+            }
+
+            const double ideal_vel = 49.5;
+            const double ref_vel_inc = 0.224;
+
+            if (too_close)
+            {
+                ref_vel -= ref_vel_inc;
+            }
+            else if (ref_vel < ideal_vel)
+            {
+                ref_vel += ref_vel_inc;
+            }
 
             if (prev_size < 2)
             {
@@ -269,8 +310,6 @@ int main() {
                 ptsy.push_back(ref_y_prev);
                 ptsy.push_back(ref_y);
             }
-
-            const int lane = 1;
 
             auto next_wp0 = getXY(car_s + 30, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
             auto next_wp1 = getXY(car_s + 60, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -314,7 +353,6 @@ int main() {
 
             const int c_path_size = 50;
             const double c_mph_to_mps = 2.24;
-            const double ref_vel = 49.5;
 
             for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
             {
