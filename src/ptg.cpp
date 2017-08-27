@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <random>
+#include "cost_functions.h"
 #include "poly_solver.h"
 #include "ptg.h"
 
@@ -90,16 +91,7 @@ vector<Trajectory> generate_trajectories(const VectorXd& start_s,
     return trajectories;
 }
 
-double dummy_function(const Trajectory& trajectory,
-                      int target_vehicle,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles)
-{
-    return 1.0;
-}
-
-std::vector<WeightedCostFunction> cost_functions = {{dummy_function, 1.0}};
+std::vector<WeightedCostFunction> cost_functions = {{time_diff_cost, 1.0}};
 
 Trajectory PTG(const VectorXd& start_s,
                const VectorXd& start_d,
