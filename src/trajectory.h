@@ -31,7 +31,15 @@ struct Trajectory
                           const VectorXd& delta,
                           double goal_t,
                           const std::vector<Vehicle>& vehicles,
-                          const std::vector<WeightedCostFunction>& cost_functions);
+                          const std::vector<WeightedCostFunction>& cost_functions) const;
+};
+
+struct TrajectoryCost
+{
+    Trajectory trajectory;
+    double cost;
+
+    bool operator<(const TrajectoryCost& other) const;
 };
 
 #endif

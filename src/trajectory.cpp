@@ -4,7 +4,7 @@ double Trajectory::calculate_cost(int target_vehicle,
                                   const VectorXd& delta,
                                   double goal_t,
                                   const std::vector<Vehicle>& vehicles,
-                                  const std::vector<WeightedCostFunction>& cost_functions)
+                                  const std::vector<WeightedCostFunction>& cost_functions) const
 {
     double cost = 0;
     for (const WeightedCostFunction& wcf : cost_functions)
@@ -16,4 +16,9 @@ double Trajectory::calculate_cost(int target_vehicle,
                                                vehicles);
     }
     return cost;
+}
+
+bool TrajectoryCost::operator<(const TrajectoryCost& other) const
+{
+    return cost < other.cost;
 }

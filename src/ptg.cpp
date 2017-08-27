@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <random>
 #include "poly_solver.h"
 #include "ptg.h"
@@ -89,6 +90,17 @@ vector<Trajectory> generate_trajectories(const VectorXd& start_s,
     return trajectories;
 }
 
+double dummy_function(const Trajectory& trajectory,
+                      int target_vehicle,
+                      const VectorXd& delta,
+                      double goal_t,
+                      const std::vector<Vehicle>& vehicles)
+{
+    return 1.0;
+}
+
+std::vector<WeightedCostFunction> cost_functions = {{dummy_function, 1.0}};
+
 Trajectory PTG(const VectorXd& start_s,
                const VectorXd& start_d,
                int target_vehicle,
@@ -99,4 +111,16 @@ Trajectory PTG(const VectorXd& start_s,
     auto target = vehicles[target_vehicle];
     auto goals = generate_goals(target, delta, T);
     auto trajectories = generate_trajectories(start_s, start_d, goals);
+
+    // Calculate trajectory costs.
+    vector<TrajectoryCost> costs;
+    for (const auto& trajectory : trajectories)
+    {
+        double cost = trajectory.calculate_cost(target_vehicle, delta, T, vehicles, cost_functions);
+        costs.emplace_back(TrajectoryCost{trajectory, cost});
+    }
+
+    // Find trajectory with minimum cost.
+    auto it = min_element(costs.begin(), costs.end());
+    return (*it).trajectory;
 }
