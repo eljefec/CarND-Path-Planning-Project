@@ -64,7 +64,14 @@ int main() {
     bool total_correct = true;
     for(int i = 0; i < tc.size(); i++)
     {
-        vector< double > jmt = JMT(tc[i].start, tc[i].end, tc[i].T);
+        Vector3d start(tc[i].start[0], tc[i].start[1], tc[i].start[2]);
+        Vector3d end(tc[i].end[0], tc[i].end[1], tc[i].end[2]);
+        VectorXd jmtEigen = JMT(start, end, tc[i].T);
+        std::vector<double> jmt(6);
+        for (int i = 0; i < 6; i++)
+        {
+            jmt[i] = jmtEigen[i];
+        }
         bool correct = close_enough(jmt,answers[i]);
         total_correct &= correct;
 

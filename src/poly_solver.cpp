@@ -1,12 +1,10 @@
-#include <vector>
-
 #include "Eigen-3.3/Eigen/Dense"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
-using namespace std;
+using Eigen::Vector3d;
 
-vector<double> JMT(vector<double> start, vector<double> end, double T)
+VectorXd JMT(const Vector3d& start, const Vector3d& end, double T)
 {
     /*
     Calculate the Jerk Minimizing Trajectory that connects the initial state
@@ -49,6 +47,7 @@ vector<double> JMT(vector<double> start, vector<double> end, double T)
 
     Eigen::Vector3d X = A.inverse() * B;
 
-    return {start[0], start[1], start[2] /2, X[0], X[1], X[2]};
-
+    VectorXd trajectory(6);
+    trajectory << start[0], start[1], start[2] /2, X[0], X[1], X[2];
+    return trajectory;
 }
