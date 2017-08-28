@@ -81,3 +81,27 @@ double d_diff_cost(const Trajectory& trajectory,
 
     return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, SIGMA_D);
 }
+
+static const double SAFE_VEHICLE_DISTANCE = 3;
+
+double collision_cost(const Trajectory& trajectory,
+                      int target_vehicle,
+                      const VectorXd& delta,
+                      double goal_t,
+                      const std::vector<Vehicle>& vehicles)
+{
+    double nearest = trajectory.nearest_approach(vehicles);
+
+    return (nearest < SAFE_VEHICLE_DISTANCE) ? 1.0 : 0.0;
+}
+
+double buffer_cost(const Trajectory& trajectory,
+                   int target_vehicle,
+                   const VectorXd& delta,
+                   double goal_t,
+                   const std::vector<Vehicle>& vehicles)
+{
+    double nearest = trajectory.nearest_approach(vehicles);
+
+    return logistic(SAFE_VEHICLE_DISTANCE / nearest);
+}

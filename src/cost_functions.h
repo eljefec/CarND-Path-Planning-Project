@@ -25,4 +25,16 @@ double d_diff_cost(const Trajectory& trajectory,
                    double goal_t,
                    const std::vector<Vehicle>& vehicles);
 
+double collision_cost(const Trajectory& trajectory,
+                      int target_vehicle,
+                      const VectorXd& delta,
+                      double goal_t,
+                      const std::vector<Vehicle>& vehicles);
+
+double buffer_cost(const Trajectory& trajectory,
+                   int target_vehicle,
+                   const VectorXd& delta,
+                   double goal_t,
+                   const std::vector<Vehicle>& vehicles);
+
 #endif
