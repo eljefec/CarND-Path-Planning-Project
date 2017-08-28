@@ -1,18 +1,23 @@
 #include <fstream>
 #include <math.h>
-#include <uWS/uWS.h>
 #include <chrono>
 #include <iostream>
 #include <thread>
 #include <vector>
+
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
-#include "environment.h"
 #include "json.hpp"
-#include "util.h"
 #include "spline.h"
+#include <uWS/uWS.h>
+
+#include "environment.h"
+#include "ptg.h"
+#include "util.h"
 
 using namespace std;
+using Eigen::VectorXd;
+using Eigen::Vector3d;
 
 // for convenience
 using json = nlohmann::json;
@@ -113,48 +118,30 @@ int main() {
             // Keep lane by default.
             int target_lane = car_lane;
 
+            const auto prev_size = previous_path_x.size();
+
+            Environment env(map_waypoints_s, map_waypoints_x, map_waypoints_y, car_s, car_d, sensor_fusion, prev_size);
+
+            auto forward_vehicle = env.lane_is_occupied(car_lane);
+
+            const double ideal_vel = 49.5;
+            const double ref_vel_inc = 0.224;
+
+            if (forward_vehicle)
+            {
+                ref_vel -= ref_vel_inc;
+            }
+            else if (ref_vel < ideal_vel)
+            {
+                ref_vel += ref_vel_inc;
+            }
+
             vector<double> ptsx;
             vector<double> ptsy;
 
             double ref_x = car_x;
             double ref_y = car_y;
             double ref_yaw = deg2rad(car_yaw);
-
-            const auto prev_size = previous_path_x.size();
-
-            Environment env(map_waypoints_s, map_waypoints_x, map_waypoints_y, car_s, car_d, sensor_fusion, prev_size);
-
-            auto too_close = env.lane_is_occupied(car_lane);
-
-            const double ideal_vel = 49.5;
-            const double ref_vel_inc = 0.224;
-
-            if (too_close)
-            {
-                ref_vel -= ref_vel_inc;
-
-                const int lane_count = 3;
-
-                for (int lane_check = 0; lane_check < lane_count; lane_check++)
-                {
-                    if (lane_check == car_lane)
-                    {
-                        continue;
-                    }
-
-                    auto occupied = env.lane_is_occupied(lane_check);
-
-                    if (!occupied)
-                    {
-                        target_lane = lane_check;
-                        break;
-                    }
-                }
-            }
-            else if (ref_vel < ideal_vel)
-            {
-                ref_vel += ref_vel_inc;
-            }
 
             if (prev_size < 2)
             {
@@ -183,38 +170,8 @@ int main() {
                 ptsy.push_back(ref_y);
             }
 
-            if (prev_size > 0)
-            {
-                car_s = end_path_s;
-            }
-
-            auto next_wp0 = env.getXY(car_s + 30, (2 + 4 * target_lane));
-            auto next_wp1 = env.getXY(car_s + 60, (2 + 4 * target_lane));
-            auto next_wp2 = env.getXY(car_s + 90, (2 + 4 * target_lane));
-
-            ptsx.push_back(next_wp0[0]);
-            ptsx.push_back(next_wp1[0]);
-            ptsx.push_back(next_wp2[0]);
-
-            ptsy.push_back(next_wp0[1]);
-            ptsy.push_back(next_wp1[1]);
-            ptsy.push_back(next_wp2[1]);
-
-            // Rotate
-            for (int i = 0; i < ptsx.size(); i++)
-            {
-                double shift_x = ptsx[i] - ref_x;
-                double shift_y = ptsy[i] - ref_y;
-
-                ptsx[i] = (shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
-                ptsy[i] = (shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
-            }
-
-            tk::spline s;
-            s.set_points(ptsx, ptsy);
-
-          	vector<double> next_x_vals;
-          	vector<double> next_y_vals;
+            vector<double> next_x_vals;
+            vector<double> next_y_vals;
 
             for (int i = 0; i < previous_path_x.size(); i++)
             {
@@ -222,35 +179,109 @@ int main() {
                 next_y_vals.push_back(previous_path_y[i]);
             }
 
-            double target_x = 30.0;
-            double target_y = s(target_x);
-            double target_dist = sqrt((target_x * target_x) + (target_y * target_y));
-
-            double x_add_on = 0;
-
             const int c_path_size = 50;
-            const double c_mph_to_mps = 2.24;
 
-            for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
+            if (forward_vehicle)
             {
-                double N = (target_dist / (0.02 * ref_vel / c_mph_to_mps));
-                double x_point = x_add_on + target_x / N;
-                double y_point = s(x_point);
+                cout << "Forward vehicle detected." << endl;
 
-                x_add_on = x_point;
+                auto prev_frenet = env.getFrenet(ptsx[0], ptsy[0], ref_yaw);
+                auto frenet = env.getFrenet(ptsx[1], ptsy[1], ref_yaw);
 
-                double x_ref = x_point;
-                double y_ref = y_point;
+                Vector3d start_s;
+                start_s << frenet[0],
+                           (frenet[0] - prev_frenet[0]) / 0.02,
+                           0;
 
-                // Rotate back to normal after rotating above.
-                x_point = (x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw));
-                y_point = (x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw));
+                Vector3d start_d;
+                start_d << frenet[1],
+                           (frenet[1] - prev_frenet[1]) / 0.02,
+                           0;
 
-                x_point += ref_x;
-                y_point += ref_y;
+                // Follow forward vehicle from behind.
+                VectorXd delta(6);
+                delta << -5, 0, 0, 0, 0, 0;
 
-                next_x_vals.push_back(x_point);
-                next_y_vals.push_back(y_point);
+                double T = 5;
+
+                Trajectory best = PTG(start_s, start_d, *forward_vehicle, delta, T, env.get_vehicles());
+                auto s_poly = best.s_poly();
+                auto d_poly = best.d_poly();
+
+                for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
+                {
+                    double t = i * 0.02;
+                    double s = s_poly.evaluate(t);
+                    double d = d_poly.evaluate(t);
+
+                    auto xy = env.getXY(s, d);
+
+                    next_x_vals.push_back(xy[0]);
+                    next_y_vals.push_back(xy[1]);
+                }
+            }
+            else
+            {
+                // Keep lane.
+                if (prev_size > 0)
+                {
+                    car_s = end_path_s;
+                }
+
+                auto next_wp0 = env.getXY(car_s + 30, (2 + 4 * target_lane));
+                auto next_wp1 = env.getXY(car_s + 60, (2 + 4 * target_lane));
+                auto next_wp2 = env.getXY(car_s + 90, (2 + 4 * target_lane));
+
+                ptsx.push_back(next_wp0[0]);
+                ptsx.push_back(next_wp1[0]);
+                ptsx.push_back(next_wp2[0]);
+
+                ptsy.push_back(next_wp0[1]);
+                ptsy.push_back(next_wp1[1]);
+                ptsy.push_back(next_wp2[1]);
+
+                // Rotate
+                for (int i = 0; i < ptsx.size(); i++)
+                {
+                    double shift_x = ptsx[i] - ref_x;
+                    double shift_y = ptsy[i] - ref_y;
+
+                    ptsx[i] = (shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
+                    ptsy[i] = (shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
+                }
+
+                tk::spline s;
+                s.set_points(ptsx, ptsy);
+
+                double target_x = 30.0;
+                double target_y = s(target_x);
+                double target_dist = sqrt((target_x * target_x) + (target_y * target_y));
+
+                double x_add_on = 0;
+
+                const double c_mph_to_mps = 2.24;
+
+                for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
+                {
+                    double N = (target_dist / (0.02 * ref_vel / c_mph_to_mps));
+                    double x_point = x_add_on + target_x / N;
+                    double y_point = s(x_point);
+
+                    x_add_on = x_point;
+
+                    double x_ref = x_point;
+                    double y_ref = y_point;
+
+                    // Rotate back to normal after rotating above.
+                    x_point = (x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw));
+                    y_point = (x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw));
+
+                    x_point += ref_x;
+                    y_point += ref_y;
+
+                    next_x_vals.push_back(x_point);
+                    next_y_vals.push_back(y_point);
+                }
             }
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
