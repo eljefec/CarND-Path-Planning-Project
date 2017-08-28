@@ -30,6 +30,7 @@ struct Vehicle
                  d,
                  0,
                  0;
+        return state;
     }
 
     const int id;

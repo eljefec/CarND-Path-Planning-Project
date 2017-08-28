@@ -11,7 +11,7 @@ vector<VectorXd> perturb_state(const VectorXd& state, int sample_count)
 {
     static default_random_engine generator(17);
 
-    VectorXd stddevs;
+    VectorXd stddevs(6);
     stddevs << SIGMA_S, SIGMA_D;
 
     vector<normal_distribution<double>> distributions;

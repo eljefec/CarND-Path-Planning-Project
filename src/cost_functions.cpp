@@ -38,7 +38,7 @@ std::vector<Polynomial> get_function_and_derivatives(const VectorXd& coeffs, int
 
 double state_diff_cost(double goal_t,
                        const Vector3d& target_state,
-                       const Vector3d& trajectory_coefficients,
+                       const VectorXd& trajectory_coefficients,
                        const Vector3d& stddev)
 {
     auto function_and_derivatives = get_function_and_derivatives(trajectory_coefficients, 2);
