@@ -69,3 +69,15 @@ double s_diff_cost(const Trajectory& trajectory,
 
     return state_diff_cost(goal_t, s_target, trajectory.s_coefficients, SIGMA_S);
 }
+
+double d_diff_cost(const Trajectory& trajectory,
+                   int target_vehicle,
+                   const VectorXd& delta,
+                   double goal_t,
+                   const std::vector<Vehicle>& vehicles)
+{
+    VectorXd target_state = vehicles[target_vehicle].state_in(goal_t) + delta;
+    Vector3d d_target = target_state.tail(3);
+
+    return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, SIGMA_D);
+}
