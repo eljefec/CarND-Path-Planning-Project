@@ -7,6 +7,7 @@
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
+#include "environment.h"
 #include "json.hpp"
 #include "util.h"
 #include "spline.h"
@@ -157,38 +158,6 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
-bool lane_is_occupied(const int lane,
-                      const vector<vector<double>>& sensor_fusion,
-                      const size_t prev_size,
-                      const double car_s)
-{
-    const float lane_width = 4;
-
-    for (const auto& sensed_car : sensor_fusion)
-    {
-        float d = sensed_car[0];
-        if (d < (lane_width * lane + lane_width) && d > (lane_width * lane))
-        {
-            double vx = sensed_car[3];
-            double vy = sensed_car[4];
-            double check_speed = sqrt(vx * vx + vy * vy);
-            double check_car_s = sensed_car[5];
-
-            for (size_t i = 0; i < prev_size; i++)
-            {
-                check_car_s += 0.02 * check_speed;
-
-                if ((check_car_s > car_s) && ((check_car_s - car_s) < 30))
-                {
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
 int main() {
   uWS::Hub h;
 
@@ -226,7 +195,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  double ref_vel = 20; // mph
+  double ref_vel = 10; // mph
 
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -284,7 +253,9 @@ int main() {
                 car_s = end_path_s;
             }
 
-            bool too_close = lane_is_occupied(car_lane, sensor_fusion, prev_size, car_s);
+            Environment env(car_s, car_d, sensor_fusion, prev_size);
+
+            auto too_close = env.lane_is_occupied(car_lane);
 
             const double ideal_vel = 49.5;
             const double ref_vel_inc = 0.224;
@@ -302,7 +273,7 @@ int main() {
                         continue;
                     }
 
-                    bool occupied = lane_is_occupied(lane_check, sensor_fusion, prev_size, car_s);
+                    auto occupied = env.lane_is_occupied(lane_check);
 
                     if (!occupied)
                     {

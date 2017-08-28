@@ -6,9 +6,8 @@
 
 using Eigen::VectorXd;
 
-class Vehicle
+struct Vehicle
 {
-public:
     Vehicle(const std::vector<double>& sensor_fusion)
       : id(sensor_fusion[0]),
         x(sensor_fusion[1]),
@@ -33,15 +32,14 @@ public:
                  0;
     }
 
-private:
-    int id;
-    double x;
-    double y;
-    double vx;
-    double vy;
-    double s;
-    double d;
-    double speed;
+    const int id;
+    const double x;
+    const double y;
+    const double vx;
+    const double vy;
+    const double s;
+    const double d;
+    const double speed;
 };
 
 #endif
