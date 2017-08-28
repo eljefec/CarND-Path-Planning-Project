@@ -7,7 +7,7 @@ add_definitions(-std=c++11)
 set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
 
-set(sources src/constants.cpp src/cost_functions.cpp src/main.cpp src/poly_solver.cpp src/polynomial.cpp src/ptg.cpp src/trajectory.cpp)
+set(sources src/constants.cpp src/cost_functions.cpp src/main.cpp src/poly_solver.cpp src/polynomial.cpp src/ptg.cpp src/trajectory.cpp src/util.cpp)
 set(poly_sources src/poly_solver.cpp src/poly_main.cpp)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

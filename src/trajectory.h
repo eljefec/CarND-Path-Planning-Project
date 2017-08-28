@@ -32,6 +32,11 @@ struct Trajectory
                           double goal_t,
                           const std::vector<Vehicle>& vehicles,
                           const std::vector<WeightedCostFunction>& cost_functions) const;
+
+    double nearest_approach(const std::vector<Vehicle>& vehicles) const;
+
+private:
+    double nearest_approach(const Vehicle& vehicle) const;
 };
 
 struct TrajectoryCost
