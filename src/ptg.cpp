@@ -1,16 +1,18 @@
 #include <algorithm>
 #include <random>
+#include "constants.h"
 #include "cost_functions.h"
 #include "poly_solver.h"
 #include "ptg.h"
 
 using namespace std;
 
-const vector<double> stddevs = {10.0, 4.0, 2.0, 1.0, 1.0, 1.0};
-
 vector<VectorXd> perturb_state(const VectorXd& state, int sample_count)
 {
     static default_random_engine generator(17);
+
+    VectorXd stddevs;
+    stddevs << SIGMA_S, SIGMA_D;
 
     vector<normal_distribution<double>> distributions;
     for (size_t i = 0; i < stddevs.size(); i++)
@@ -91,7 +93,8 @@ vector<Trajectory> generate_trajectories(const VectorXd& start_s,
     return trajectories;
 }
 
-std::vector<WeightedCostFunction> cost_functions = {{time_diff_cost, 1.0}};
+std::vector<WeightedCostFunction> cost_functions = {{time_diff_cost, 1.0},
+                                                    {s_diff_cost, 1.0}};
 
 Trajectory PTG(const VectorXd& start_s,
                const VectorXd& start_d,

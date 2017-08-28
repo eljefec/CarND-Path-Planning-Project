@@ -13,4 +13,10 @@ double time_diff_cost(const Trajectory& trajectory,
                       double goal_t,
                       const std::vector<Vehicle>& vehicles);
 
+double s_diff_cost(const Trajectory& trajectory,
+                   int target_vehicle,
+                   const VectorXd& delta,
+                   double goal_t,
+                   const std::vector<Vehicle>& vehicles);
+
 #endif
