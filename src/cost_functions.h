@@ -8,31 +8,31 @@
 using Eigen::VectorXd;
 
 double time_diff_cost(const Trajectory& trajectory,
-                      int target_vehicle,
+                      const Vehicle& target,
                       const VectorXd& delta,
                       double goal_t,
                       const std::vector<Vehicle>& vehicles);
 
 double s_diff_cost(const Trajectory& trajectory,
-                   int target_vehicle,
+                   const Vehicle& target,
                    const VectorXd& delta,
                    double goal_t,
                    const std::vector<Vehicle>& vehicles);
 
 double d_diff_cost(const Trajectory& trajectory,
-                   int target_vehicle,
+                   const Vehicle& target,
                    const VectorXd& delta,
                    double goal_t,
                    const std::vector<Vehicle>& vehicles);
 
 double collision_cost(const Trajectory& trajectory,
-                      int target_vehicle,
+                      const Vehicle& target,
                       const VectorXd& delta,
                       double goal_t,
                       const std::vector<Vehicle>& vehicles);
 
 double buffer_cost(const Trajectory& trajectory,
-                   int target_vehicle,
+                   const Vehicle& target,
                    const VectorXd& delta,
                    double goal_t,
                    const std::vector<Vehicle>& vehicles);

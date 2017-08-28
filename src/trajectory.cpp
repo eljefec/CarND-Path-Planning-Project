@@ -6,7 +6,7 @@
 
 using namespace std;
 
-double Trajectory::calculate_cost(int target_vehicle,
+double Trajectory::calculate_cost(const Vehicle& target,
                                   const VectorXd& delta,
                                   double goal_t,
                                   const std::vector<Vehicle>& vehicles,
@@ -16,7 +16,7 @@ double Trajectory::calculate_cost(int target_vehicle,
     for (const WeightedCostFunction& wcf : cost_functions)
     {
         cost += wcf.weight * wcf.cost_function(*this,
-                                               target_vehicle,
+                                               target,
                                                delta,
                                                goal_t,
                                                vehicles);

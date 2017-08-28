@@ -15,7 +15,7 @@ double logistic(double x)
 }
 
 double time_diff_cost(const Trajectory& trajectory,
-                      int target_vehicle,
+                      const Vehicle& target,
                       const VectorXd& delta,
                       double goal_t,
                       const std::vector<Vehicle>& vehicles)
@@ -59,24 +59,24 @@ double state_diff_cost(double goal_t,
 }
 
 double s_diff_cost(const Trajectory& trajectory,
-                   int target_vehicle,
+                   const Vehicle& target,
                    const VectorXd& delta,
                    double goal_t,
                    const std::vector<Vehicle>& vehicles)
 {
-    VectorXd target_state = vehicles[target_vehicle].state_in(goal_t) + delta;
+    VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d s_target = target_state.head(3);
 
     return state_diff_cost(goal_t, s_target, trajectory.s_coefficients, SIGMA_S);
 }
 
 double d_diff_cost(const Trajectory& trajectory,
-                   int target_vehicle,
+                   const Vehicle& target,
                    const VectorXd& delta,
                    double goal_t,
                    const std::vector<Vehicle>& vehicles)
 {
-    VectorXd target_state = vehicles[target_vehicle].state_in(goal_t) + delta;
+    VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d d_target = target_state.tail(3);
 
     return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, SIGMA_D);
@@ -85,7 +85,7 @@ double d_diff_cost(const Trajectory& trajectory,
 static const double SAFE_VEHICLE_DISTANCE = 3;
 
 double collision_cost(const Trajectory& trajectory,
-                      int target_vehicle,
+                      const Vehicle& target,
                       const VectorXd& delta,
                       double goal_t,
                       const std::vector<Vehicle>& vehicles)
@@ -96,7 +96,7 @@ double collision_cost(const Trajectory& trajectory,
 }
 
 double buffer_cost(const Trajectory& trajectory,
-                   int target_vehicle,
+                   const Vehicle& target,
                    const VectorXd& delta,
                    double goal_t,
                    const std::vector<Vehicle>& vehicles)

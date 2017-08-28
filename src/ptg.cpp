@@ -102,12 +102,11 @@ std::vector<WeightedCostFunction> cost_functions = {{time_diff_cost, 1.0},
 
 Trajectory PTG(const VectorXd& start_s,
                const VectorXd& start_d,
-               int target_vehicle,
+               const Vehicle& target,
                const VectorXd& delta,
                double T,
                const vector<Vehicle>& vehicles)
 {
-    auto target = vehicles[target_vehicle];
     auto goals = generate_goals(target, delta, T);
     auto trajectories = generate_trajectories(start_s, start_d, goals);
 
@@ -115,7 +114,7 @@ Trajectory PTG(const VectorXd& start_s,
     vector<TrajectoryCost> costs;
     for (const auto& trajectory : trajectories)
     {
-        double cost = trajectory.calculate_cost(target_vehicle, delta, T, vehicles, cost_functions);
+        double cost = trajectory.calculate_cost(target, delta, T, vehicles, cost_functions);
         costs.emplace_back(TrajectoryCost{trajectory, cost});
     }
 

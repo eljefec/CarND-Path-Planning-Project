@@ -10,7 +10,7 @@ using Eigen::VectorXd;
 struct Trajectory;
 
 typedef std::function<double(const Trajectory& trajectory,
-                             int target_vehicle,
+                             const Vehicle& target,
                              const VectorXd& delta,
                              double goal_t,
                              const std::vector<Vehicle>& vehicles)> CostFunction;
@@ -27,7 +27,7 @@ struct Trajectory
     VectorXd d_coefficients;
     double t;
 
-    double calculate_cost(int target_vehicle,
+    double calculate_cost(const Vehicle& target,
                           const VectorXd& delta,
                           double goal_t,
                           const std::vector<Vehicle>& vehicles,
