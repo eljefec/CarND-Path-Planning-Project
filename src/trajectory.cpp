@@ -67,6 +67,17 @@ double Trajectory::nearest_approach(const Vehicle& vehicle) const
     return nearest;
 }
 
+
+Polynomial Trajectory::s_poly() const
+{
+    return Polynomial(s_coefficients);
+}
+
+Polynomial Trajectory::d_poly() const
+{
+    return Polynomial(d_coefficients);
+}
+
 bool TrajectoryCost::operator<(const TrajectoryCost& other) const
 {
     return cost < other.cost;

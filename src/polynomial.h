@@ -1,9 +1,6 @@
 #ifndef POLYNOMIAL_H
 #define POLYNOMIAL_H
 
-#include "trajectory.h"
-#include "vehicle.h"
-
 #include "Eigen-3.3/Eigen/Dense"
 
 using Eigen::VectorXd;

@@ -3,6 +3,7 @@
 
 #include <functional>
 #include "Eigen-3.3/Eigen/Dense"
+#include "polynomial.h"
 #include "vehicle.h"
 
 using Eigen::VectorXd;
@@ -34,6 +35,9 @@ struct Trajectory
                           const std::vector<WeightedCostFunction>& cost_functions) const;
 
     double nearest_approach(const std::vector<Vehicle>& vehicles) const;
+
+    Polynomial s_poly() const;
+    Polynomial d_poly() const;
 
 private:
     double nearest_approach(const Vehicle& vehicle) const;
