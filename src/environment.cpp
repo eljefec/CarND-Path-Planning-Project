@@ -23,7 +23,7 @@ Environment::Environment(const vector<double>& maps_s,
     }
 }
 
-std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane)
+std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane) const
 {
     const float lane_width = 4;
 
@@ -109,7 +109,7 @@ int NextWaypoint(double x, double y, double theta, const vector<double>& maps_x,
 }
 
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
-vector<double> Environment::getFrenet(double x, double y, double theta)
+vector<double> Environment::getFrenet(double x, double y, double theta) const
 {
 	int next_wp = NextWaypoint(x,y, theta, maps_x,maps_y);
 
@@ -158,7 +158,7 @@ vector<double> Environment::getFrenet(double x, double y, double theta)
 }
 
 // Transform from Frenet s,d coordinates to Cartesian x,y
-vector<double> Environment::getXY(double s, double d)
+vector<double> Environment::getXY(double s, double d) const
 {
 	int prev_wp = -1;
 
@@ -183,4 +183,9 @@ vector<double> Environment::getXY(double s, double d)
 
 	return {x,y};
 
+}
+
+const std::vector<Vehicle>& Environment::get_vehicles() const
+{
+    return vehicles;
 }
