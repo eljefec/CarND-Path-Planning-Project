@@ -198,9 +198,9 @@ int main() {
                            (frenet[1] - prev_frenet[1]) / 0.02,
                            0;
 
-                // Follow forward vehicle from behind.
+                // Pass forward vehicle.
                 VectorXd delta(6);
-                delta << -5, 0, 0, 0, 0, 0;
+                delta << 0, 0, 0, 0, 0, 0;
 
                 double T = 5;
 
@@ -211,8 +211,8 @@ int main() {
                 for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
                 {
                     double t = i * 0.02;
-                    double s = s_poly.evaluate(t);
-                    double d = d_poly.evaluate(t);
+                    double s = s_poly.evaluate(t) + start_s[0];
+                    double d = d_poly.evaluate(t) + start_d[0];
 
                     auto xy = env.getXY(s, d);
 
