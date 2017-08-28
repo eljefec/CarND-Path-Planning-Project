@@ -122,11 +122,6 @@ int main() {
 
             const auto prev_size = previous_path_x.size();
 
-            if (prev_size > 0)
-            {
-                car_s = end_path_s;
-            }
-
             Environment env(map_waypoints_s, map_waypoints_x, map_waypoints_y, car_s, car_d, sensor_fusion, prev_size);
 
             auto too_close = env.lane_is_occupied(car_lane);
@@ -186,6 +181,11 @@ int main() {
 
                 ptsy.push_back(ref_y_prev);
                 ptsy.push_back(ref_y);
+            }
+
+            if (prev_size > 0)
+            {
+                car_s = end_path_s;
             }
 
             auto next_wp0 = env.getXY(car_s + 30, (2 + 4 * target_lane));
