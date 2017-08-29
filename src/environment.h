@@ -1,6 +1,7 @@
 #ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
 
+#include <iostream>
 #include <memory>
 #include <vector>
 #include "vehicle.h"
@@ -33,5 +34,7 @@ private:
     std::vector<Vehicle> vehicles;
     size_t prev_size;
 };
+
+std::ostream& operator<<(std::ostream& os, const Environment& env);
 
 #endif

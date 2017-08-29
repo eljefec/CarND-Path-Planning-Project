@@ -74,7 +74,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  double ref_vel = 10; // mph
+  double ref_vel = 49; // mph
 
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -121,6 +121,9 @@ int main() {
             const auto prev_size = previous_path_x.size();
 
             Environment env(map_waypoints_s, map_waypoints_x, map_waypoints_y, car_s, car_d, sensor_fusion, prev_size);
+
+            cout << "car_s:" << car_s << ",car_d:" << car_d << ",car_speed:" << car_speed << endl;
+            cout << env << endl;
 
             auto forward_vehicle = env.lane_is_occupied(car_lane);
 
@@ -183,41 +186,56 @@ int main() {
 
             if (forward_vehicle)
             {
-                cout << "Forward vehicle detected." << endl;
-
-                auto prev_frenet = env.getFrenet(ptsx[0], ptsy[0], ref_yaw);
-                auto frenet = env.getFrenet(ptsx[1], ptsy[1], ref_yaw);
-
-                Vector3d start_s;
-                start_s << frenet[0],
-                           (frenet[0] - prev_frenet[0]) / 0.02,
-                           0;
-
-                Vector3d start_d;
-                start_d << frenet[1],
-                           (frenet[1] - prev_frenet[1]) / 0.02,
-                           0;
-
-                // Pass forward vehicle.
-                VectorXd delta(6);
-                delta << 0, 0, 0, 0, 0, 0;
-
-                double T = 5;
-
-                Trajectory best = PTG(start_s, start_d, *forward_vehicle, delta, T, env.get_vehicles());
-                auto s_poly = best.s_poly();
-                auto d_poly = best.d_poly();
-
-                for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
+                if (prev_size < c_path_size)
                 {
-                    double t = i * 0.02;
-                    double s = s_poly.evaluate(t) + start_s[0];
-                    double d = d_poly.evaluate(t) + start_d[0];
+                    cout << "Forward vehicle detected. id:" << forward_vehicle->id << endl;
 
-                    auto xy = env.getXY(s, d);
+                    auto prev_frenet = env.getFrenet(ptsx[0], ptsy[0], ref_yaw);
+                    auto frenet = env.getFrenet(ptsx[1], ptsy[1], ref_yaw);
 
-                    next_x_vals.push_back(xy[0]);
-                    next_y_vals.push_back(xy[1]);
+                    cout << "frenet_s:" << frenet[0] << ",prev_frenet_s:" << prev_frenet[0] << endl;
+
+                    Vector3d start_s;
+                    start_s << frenet[0],
+                               (frenet[0] - prev_frenet[0]) / 0.02,
+                               0;
+
+                    Vector3d start_d;
+                    start_d << frenet[1],
+                               (frenet[1] - prev_frenet[1]) / 0.02,
+                               0;
+
+                    // Pass forward vehicle.
+                    VectorXd delta(6);
+                    delta << 0, 0, 0, -4, 0, 0;
+
+                    double T = 5;
+
+                    Trajectory best = PTG(start_s, start_d, *forward_vehicle, delta, T, env.get_vehicles());
+                    auto s_poly = best.s_poly();
+                    auto d_poly = best.d_poly();
+
+                    cout << "best.t:" << best.t << endl;
+
+                    int path_size = best.t / 0.02;
+
+                    for (int i = 1; i <= path_size; i++)
+                    {
+                        double t = i * 0.02;
+                        double s = s_poly.evaluate(t) + start_s[0];
+                        double d = d_poly.evaluate(t) + start_d[0];
+
+                        cout << "s_poly:" << s << ",d_poly:" << d << endl;
+
+                        auto xy = env.getXY(s, d);
+
+                        next_x_vals.push_back(xy[0]);
+                        next_y_vals.push_back(xy[1]);
+                    }
+                }
+                else
+                {
+                    cout << "Follow prev path." << endl;
                 }
             }
             else

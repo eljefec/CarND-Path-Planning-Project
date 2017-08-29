@@ -189,3 +189,13 @@ const std::vector<Vehicle>& Environment::get_vehicles() const
 {
     return vehicles;
 }
+
+std::ostream& operator<<(std::ostream& os, const Environment& env)
+{
+    os << "Environment." << endl;
+    for (const auto& v : env.get_vehicles())
+    {
+        os << v << endl;
+    }
+    return os;
+}

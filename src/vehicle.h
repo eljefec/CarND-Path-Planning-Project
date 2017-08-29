@@ -1,6 +1,7 @@
 #ifndef VEHICLE_H
 #define VEHICLE_H
 
+#include <iostream>
 #include <vector>
 #include "Eigen-3.3/Eigen/Dense"
 
@@ -42,5 +43,7 @@ struct Vehicle
     const double d;
     const double speed;
 };
+
+std::ostream& operator<<(std::ostream& os, const Vehicle& v);
 
 #endif
