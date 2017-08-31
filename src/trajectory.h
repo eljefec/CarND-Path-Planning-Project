@@ -16,23 +16,11 @@ typedef std::function<double(const Trajectory& trajectory,
                              double goal_t,
                              const std::vector<Vehicle>& vehicles)> CostFunction;
 
-struct WeightedCostFunction
-{
-    CostFunction cost_function;
-    double weight;
-};
-
 struct Trajectory
 {
     VectorXd s_coefficients;
     VectorXd d_coefficients;
     double t;
-
-    double calculate_cost(const Vehicle& target,
-                          const VectorXd& delta,
-                          double goal_t,
-                          const std::vector<Vehicle>& vehicles,
-                          const std::vector<WeightedCostFunction>& cost_functions) const;
 
     double nearest_approach(const std::vector<Vehicle>& vehicles) const;
 

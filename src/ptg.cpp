@@ -93,22 +93,6 @@ vector<Trajectory> generate_trajectories(const VectorXd& start_s,
     return trajectories;
 }
 
-std::vector<WeightedCostFunction> cost_functions = {{time_diff_cost, 0.0},
-                                                    {s_diff_cost, 1.0},
-                                                    {d_diff_cost, 1.0},
-                                                    {collision_cost, 1.0},
-                                                    {buffer_cost, 1.0},
-                                                    {efficiency_cost, 1.0},
-                                                    {total_accel_cost, 1.0},
-                                                    {total_jerk_cost, 1.0},
-                                                    {max_speed_cost, 1.0},
-                                                    {max_accel_cost, 1.0},
-                                                    {max_jerk_cost, 1.0},
-                                                    {offroad_cost, 1.0},
-                                                    // {offcenter_cost, 1.0},
-                                                    {backward_cost, 5.0}
-                                                   };
-
 Trajectory PTG(const VectorXd& start_s,
                const VectorXd& start_d,
                const Vehicle& target,
@@ -123,7 +107,8 @@ Trajectory PTG(const VectorXd& start_s,
     vector<TrajectoryCost> costs;
     for (const auto& trajectory : trajectories)
     {
-        double cost = trajectory.calculate_cost(target, delta, T, vehicles, cost_functions);
+        CostFunctions cost_functions(trajectory, target, delta, T, vehicles);
+        double cost = cost_functions.cost();
         costs.emplace_back(TrajectoryCost{trajectory, cost});
     }
 

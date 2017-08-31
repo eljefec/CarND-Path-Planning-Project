@@ -6,6 +6,7 @@
 
 using namespace std;
 
+/*
 double Trajectory::calculate_cost(const Vehicle& target,
                                   const VectorXd& delta,
                                   double goal_t,
@@ -23,6 +24,7 @@ double Trajectory::calculate_cost(const Vehicle& target,
     }
     return cost;
 }
+*/
 
 double Trajectory::nearest_approach(const std::vector<Vehicle>& vehicles) const
 {

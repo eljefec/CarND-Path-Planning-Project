@@ -20,16 +20,60 @@ static const double MAX_ACCEL = 10;
 static const double MAX_JERK = 10;
 static const int TRAJECTORY_SAMPLES = 20;
 
+
+CostFunctions::CostFunctions(const Trajectory& trajectory,
+                             const Vehicle& target,
+                             const VectorXd& delta,
+                             double goal_t,
+                             const std::vector<Vehicle>& vehicles)
+  : trajectory(trajectory),
+    target(target),
+    delta(delta),
+    goal_t(goal_t),
+    vehicles(vehicles)
+{
+}
+
+struct WeightedCostFunction
+{
+    std::function<double(CostFunctions*)> cost_function;
+    double weight;
+};
+
+double CostFunctions::cost()
+{
+    using namespace std::placeholders;
+
+    std::vector<WeightedCostFunction> cost_functions = {{bind(&CostFunctions::time_diff_cost, _1), 0.0},
+                                                        {bind(&CostFunctions::s_diff_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::d_diff_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::collision_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::buffer_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::efficiency_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::total_accel_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::total_jerk_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::max_speed_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::max_accel_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::max_jerk_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::offroad_cost, _1), 1.0},
+                                                        // {bind(&CostFunctions::offcenter_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::backward_cost, _1), 5.0}
+                                                       };
+
+    double cost = 0;
+    for (const auto& wcf : cost_functions)
+    {
+        cost += wcf.weight * wcf.cost_function(this);
+    }
+    return cost;
+}
+
 double logistic(double x)
 {
     return 2.0 / (1.0 + exp(-x)) - 1.0;
 }
 
-double time_diff_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles)
+double CostFunctions::time_diff_cost()
 {
     return logistic(abs(trajectory.t - goal_t) / goal_t);
 }
@@ -69,11 +113,7 @@ double state_diff_cost(double goal_t,
     return cost;
 }
 
-double s_diff_cost(const Trajectory& trajectory,
-                   const Vehicle& target,
-                   const VectorXd& delta,
-                   double goal_t,
-                   const std::vector<Vehicle>& vehicles)
+double CostFunctions::s_diff_cost()
 {
     VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d s_target = target_state.head(3);
@@ -81,11 +121,7 @@ double s_diff_cost(const Trajectory& trajectory,
     return state_diff_cost(goal_t, s_target, trajectory.s_coefficients, SIGMA_S);
 }
 
-double d_diff_cost(const Trajectory& trajectory,
-                   const Vehicle& target,
-                   const VectorXd& delta,
-                   double goal_t,
-                   const std::vector<Vehicle>& vehicles)
+double CostFunctions::d_diff_cost()
 {
     VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d d_target = target_state.tail(3);
@@ -93,33 +129,21 @@ double d_diff_cost(const Trajectory& trajectory,
     return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, SIGMA_D);
 }
 
-double collision_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles)
+double CostFunctions::collision_cost()
 {
     double nearest = trajectory.nearest_approach(vehicles);
 
     return (nearest < SAFE_VEHICLE_DISTANCE) ? 1.0 : 0.0;
 }
 
-double buffer_cost(const Trajectory& trajectory,
-                   const Vehicle& target,
-                   const VectorXd& delta,
-                   double goal_t,
-                   const std::vector<Vehicle>& vehicles)
+double CostFunctions::buffer_cost()
 {
     double nearest = trajectory.nearest_approach(vehicles);
 
     return logistic(SAFE_VEHICLE_DISTANCE / nearest);
 }
 
-double efficiency_cost(const Trajectory& trajectory,
-                       const Vehicle& target,
-                       const VectorXd& delta,
-                       double goal_t,
-                       const std::vector<Vehicle>& vehicles)
+double CostFunctions::efficiency_cost()
 {
     Polynomial s_trajectory(trajectory.s_coefficients);
     double v_trajectory = s_trajectory.evaluate(trajectory.t) / trajectory.t;
@@ -151,20 +175,12 @@ double total_derivative_cost(const VectorXd& trajectory_coefficients,
     return logistic(value_per_second / expected_value_per_second);
 }
 
-double total_accel_cost(const Trajectory& trajectory,
-                        const Vehicle& target,
-                        const VectorXd& delta,
-                        double goal_t,
-                        const std::vector<Vehicle>& vehicles)
+double CostFunctions::total_accel_cost()
 {
     return total_derivative_cost(trajectory.s_coefficients, 2, goal_t, EXPECTED_ACC_IN_ONE_SEC);
 }
 
-double total_jerk_cost(const Trajectory& trajectory,
-                       const Vehicle& target,
-                       const VectorXd& delta,
-                       double goal_t,
-                       const std::vector<Vehicle>& vehicles)
+double CostFunctions::total_jerk_cost()
 {
     return total_derivative_cost(trajectory.s_coefficients, 3, goal_t, EXPECTED_JERK_IN_ONE_SEC);
 }
@@ -195,49 +211,29 @@ double max_derivative_cost(const VectorXd& trajectory_coefficients,
     return 0;
 }
 
-double max_speed_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles)
+double CostFunctions::max_speed_cost()
 {
     return max_derivative_cost(trajectory.s_coefficients, 1, goal_t, MAX_SPEED);
 }
 
-double max_accel_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles)
+double CostFunctions::max_accel_cost()
 {
     return max_derivative_cost(trajectory.s_coefficients, 2, goal_t, MAX_ACCEL);
 }
 
-double max_jerk_cost(const Trajectory& trajectory,
-                     const Vehicle& target,
-                     const VectorXd& delta,
-                     double goal_t,
-                     const std::vector<Vehicle>& vehicles)
+double CostFunctions::max_jerk_cost()
 {
     return max_derivative_cost(trajectory.s_coefficients, 3, goal_t, MAX_JERK);
 }
 
-double offroad_cost(const Trajectory& trajectory,
-                    const Vehicle& target,
-                    const VectorXd& delta,
-                    double goal_t,
-                    const std::vector<Vehicle>& vehicles)
+double CostFunctions::offroad_cost()
 {
     static const double MIN_D = 0;
     static const double MAX_D = 12;
     return max_derivative_cost(trajectory.d_coefficients, 0, goal_t, MAX_D, MIN_D);
 }
 
-double offcenter_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles)
+double CostFunctions::offcenter_cost()
 {
     Polynomial d_trajectory(trajectory.d_coefficients);
 
@@ -258,11 +254,7 @@ double offcenter_cost(const Trajectory& trajectory,
     return total_offcenter / TRAJECTORY_SAMPLES;
 }
 
-double backward_cost(const Trajectory& trajectory,
-                     const Vehicle& target,
-                     const VectorXd& delta,
-                     double goal_t,
-                     const std::vector<Vehicle>& vehicles)
+double CostFunctions::backward_cost()
 {
     Polynomial s_trajectory(trajectory.s_coefficients);
 

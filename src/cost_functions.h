@@ -7,88 +7,38 @@
 
 using Eigen::VectorXd;
 
-double time_diff_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles);
+class CostFunctions
+{
+public:
+    CostFunctions(const Trajectory& trajectory,
+                  const Vehicle& target,
+                  const VectorXd& delta,
+                  double goal_t,
+                  const std::vector<Vehicle>& vehicles);
 
-double s_diff_cost(const Trajectory& trajectory,
-                   const Vehicle& target,
-                   const VectorXd& delta,
-                   double goal_t,
-                   const std::vector<Vehicle>& vehicles);
+    double cost();
 
-double d_diff_cost(const Trajectory& trajectory,
-                   const Vehicle& target,
-                   const VectorXd& delta,
-                   double goal_t,
-                   const std::vector<Vehicle>& vehicles);
+private:
+    double time_diff_cost();
+    double s_diff_cost();
+    double d_diff_cost();
+    double collision_cost();
+    double buffer_cost();
+    double efficiency_cost();
+    double total_accel_cost();
+    double total_jerk_cost();
+    double max_speed_cost();
+    double max_accel_cost();
+    double max_jerk_cost();
+    double offroad_cost();
+    double offcenter_cost();
+    double backward_cost();
 
-double collision_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles);
-
-double buffer_cost(const Trajectory& trajectory,
-                   const Vehicle& target,
-                   const VectorXd& delta,
-                   double goal_t,
-                   const std::vector<Vehicle>& vehicles);
-
-double efficiency_cost(const Trajectory& trajectory,
-                       const Vehicle& target,
-                       const VectorXd& delta,
-                       double goal_t,
-                       const std::vector<Vehicle>& vehicles);
-
-double total_accel_cost(const Trajectory& trajectory,
-                        const Vehicle& target,
-                        const VectorXd& delta,
-                        double goal_t,
-                        const std::vector<Vehicle>& vehicles);
-
-double total_jerk_cost(const Trajectory& trajectory,
-                       const Vehicle& target,
-                       const VectorXd& delta,
-                       double goal_t,
-                       const std::vector<Vehicle>& vehicles);
-
-double max_speed_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles);
-
-double max_accel_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles);
-
-double max_jerk_cost(const Trajectory& trajectory,
-                     const Vehicle& target,
-                     const VectorXd& delta,
-                     double goal_t,
-                     const std::vector<Vehicle>& vehicles);
-
-double offroad_cost(const Trajectory& trajectory,
-                    const Vehicle& target,
-                    const VectorXd& delta,
-                    double goal_t,
-                    const std::vector<Vehicle>& vehicles);
-
-double offcenter_cost(const Trajectory& trajectory,
-                      const Vehicle& target,
-                      const VectorXd& delta,
-                      double goal_t,
-                      const std::vector<Vehicle>& vehicles);
-
-double backward_cost(const Trajectory& trajectory,
-                     const Vehicle& target,
-                     const VectorXd& delta,
-                     double goal_t,
-                     const std::vector<Vehicle>& vehicles);
+    const Trajectory& trajectory;
+    const Vehicle& target;
+    const VectorXd& delta;
+    double goal_t;
+    const std::vector<Vehicle>& vehicles;
+};
 
 #endif
