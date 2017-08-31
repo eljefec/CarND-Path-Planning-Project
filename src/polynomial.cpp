@@ -20,7 +20,7 @@ double Polynomial::evaluate(double t)
     double total = 0;
     for (int i = 0; i < coefficients.size(); i++)
     {
-        total += pow(coefficients[i] * t, i);
+        total += coefficients[i] * pow(t, i);
     }
     return total;
 }

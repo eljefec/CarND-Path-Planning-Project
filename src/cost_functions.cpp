@@ -98,7 +98,6 @@ std::vector<Polynomial> get_function_and_derivatives(const VectorXd& coeffs, int
 double state_diff_cost(double goal_t,
                        const Vector3d& target_state,
                        const VectorXd& trajectory_coefficients,
-                       const Vector3d& start_state,
                        const Vector3d& stddev)
 {
     auto function_and_derivatives = get_function_and_derivatives(trajectory_coefficients, 2);
@@ -108,8 +107,6 @@ double state_diff_cost(double goal_t,
     {
         trajectory[i] = function_and_derivatives[i].evaluate(goal_t);
     }
-
-    trajectory += start_state;
 
     double cost = 0;
     for (int i = 0; i < 3; i++)
@@ -125,7 +122,7 @@ double CostFunctions::s_diff_cost()
     VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d s_target = target_state.head(3);
 
-    return state_diff_cost(goal_t, s_target, trajectory.s_coefficients, start_s, SIGMA_S);
+    return state_diff_cost(goal_t, s_target, trajectory.s_coefficients, SIGMA_S);
 }
 
 double CostFunctions::d_diff_cost()
@@ -133,7 +130,7 @@ double CostFunctions::d_diff_cost()
     VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d d_target = target_state.tail(3);
 
-    return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, start_d, SIGMA_D);
+    return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, SIGMA_D);
 }
 
 double CostFunctions::collision_cost()
