@@ -96,13 +96,17 @@ vector<Trajectory> generate_trajectories(const VectorXd& start_s,
 std::vector<WeightedCostFunction> cost_functions = {{time_diff_cost, 0.0},
                                                     {s_diff_cost, 1.0},
                                                     {d_diff_cost, 1.0},
-                                                    {collision_cost, 5.0},
-                                                    {buffer_cost, 3.0},
+                                                    {collision_cost, 1.0},
+                                                    {buffer_cost, 1.0},
                                                     {efficiency_cost, 1.0},
                                                     {total_accel_cost, 1.0},
                                                     {total_jerk_cost, 1.0},
+                                                    {max_speed_cost, 1.0},
                                                     {max_accel_cost, 1.0},
-                                                    {max_jerk_cost, 1.0}
+                                                    {max_jerk_cost, 1.0},
+                                                    {offroad_cost, 1.0},
+                                                    // {offcenter_cost, 1.0},
+                                                    {backward_cost, 5.0}
                                                    };
 
 Trajectory PTG(const VectorXd& start_s,

@@ -193,7 +193,7 @@ int main() {
                     auto prev_frenet = env.getFrenet(ptsx[0], ptsy[0], ref_yaw);
                     auto frenet = env.getFrenet(ptsx[1], ptsy[1], ref_yaw);
 
-                    cout << "frenet_s:" << frenet[0] << ",prev_frenet_s:" << prev_frenet[0] << endl;
+                    cout << "pts[0]:(" << ptsx[0] << ',' << ptsy[0] << "),pts[1]:(" << ptsx[1] << ',' << ptsy[1] << "),frenet_s:" << frenet[0] << ",prev_frenet_s:" << prev_frenet[0] << endl;
 
                     Vector3d start_s;
                     start_s << frenet[0],
@@ -209,7 +209,7 @@ int main() {
 
                     // Pass forward vehicle.
                     VectorXd delta(6);
-                    delta << 0, 0, 0, -4, 0, 0;
+                    delta << 0, 0, 0, 0, 0, 0;
 
                     double T = 2.5;
 

@@ -55,6 +55,12 @@ double total_jerk_cost(const Trajectory& trajectory,
                        double goal_t,
                        const std::vector<Vehicle>& vehicles);
 
+double max_speed_cost(const Trajectory& trajectory,
+                      const Vehicle& target,
+                      const VectorXd& delta,
+                      double goal_t,
+                      const std::vector<Vehicle>& vehicles);
+
 double max_accel_cost(const Trajectory& trajectory,
                       const Vehicle& target,
                       const VectorXd& delta,
@@ -62,6 +68,24 @@ double max_accel_cost(const Trajectory& trajectory,
                       const std::vector<Vehicle>& vehicles);
 
 double max_jerk_cost(const Trajectory& trajectory,
+                     const Vehicle& target,
+                     const VectorXd& delta,
+                     double goal_t,
+                     const std::vector<Vehicle>& vehicles);
+
+double offroad_cost(const Trajectory& trajectory,
+                    const Vehicle& target,
+                    const VectorXd& delta,
+                    double goal_t,
+                    const std::vector<Vehicle>& vehicles);
+
+double offcenter_cost(const Trajectory& trajectory,
+                      const Vehicle& target,
+                      const VectorXd& delta,
+                      double goal_t,
+                      const std::vector<Vehicle>& vehicles);
+
+double backward_cost(const Trajectory& trajectory,
                      const Vehicle& target,
                      const VectorXd& delta,
                      double goal_t,

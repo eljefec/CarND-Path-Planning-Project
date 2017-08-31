@@ -1,4 +1,6 @@
 #include <cmath>
+#include <iostream>
+#include <limits>
 #include "constants.h"
 #include "cost_functions.h"
 #include "polynomial.h"
@@ -12,8 +14,11 @@ using namespace std;
 static const double SAFE_VEHICLE_DISTANCE = 3;
 static const double EXPECTED_ACC_IN_ONE_SEC = 1;
 static const double EXPECTED_JERK_IN_ONE_SEC = 2;
+// 22.1 meters per second is 49.5 miles per hour.
+static const double MAX_SPEED = 22.1;
 static const double MAX_ACCEL = 10;
 static const double MAX_JERK = 10;
+static const int TRAJECTORY_SAMPLES = 20;
 
 double logistic(double x)
 {
@@ -135,8 +140,8 @@ double total_derivative_cost(const VectorXd& trajectory_coefficients,
     auto derivative = function_and_derivatives[derivative_count];
 
     double total_value = 0;
-    double dt = goal_t / 100.0;
-    for (int i = 0; i < 100; i++)
+    const double dt = goal_t / TRAJECTORY_SAMPLES;
+    for (int i = 0; i < TRAJECTORY_SAMPLES; i++)
     {
         double t = dt * i;
         double value = derivative.evaluate(t);
@@ -167,14 +172,14 @@ double total_jerk_cost(const Trajectory& trajectory,
 double max_derivative_cost(const VectorXd& trajectory_coefficients,
                            int derivative_count,
                            double goal_t,
-                           double max)
+                           double max,
+                           double min = numeric_limits<double>::min())
 {
     auto function_and_derivatives = get_function_and_derivatives(trajectory_coefficients, derivative_count);
     auto derivative = function_and_derivatives[derivative_count];
 
-    double max_value = 0;
-    double dt = goal_t / 100.0;
-    for (int i = 0; i < 100; i++)
+    const double dt = goal_t / TRAJECTORY_SAMPLES;
+    for (int i = 0; i < TRAJECTORY_SAMPLES; i++)
     {
         double t = dt * i;
         double value = derivative.evaluate(t);
@@ -182,8 +187,21 @@ double max_derivative_cost(const VectorXd& trajectory_coefficients,
         {
             return 1;
         }
+        if (value < min)
+        {
+            return 1;
+        }
     }
     return 0;
+}
+
+double max_speed_cost(const Trajectory& trajectory,
+                      const Vehicle& target,
+                      const VectorXd& delta,
+                      double goal_t,
+                      const std::vector<Vehicle>& vehicles)
+{
+    return max_derivative_cost(trajectory.s_coefficients, 1, goal_t, MAX_SPEED);
 }
 
 double max_accel_cost(const Trajectory& trajectory,
@@ -202,4 +220,64 @@ double max_jerk_cost(const Trajectory& trajectory,
                      const std::vector<Vehicle>& vehicles)
 {
     return max_derivative_cost(trajectory.s_coefficients, 3, goal_t, MAX_JERK);
+}
+
+double offroad_cost(const Trajectory& trajectory,
+                    const Vehicle& target,
+                    const VectorXd& delta,
+                    double goal_t,
+                    const std::vector<Vehicle>& vehicles)
+{
+    static const double MIN_D = 0;
+    static const double MAX_D = 12;
+    return max_derivative_cost(trajectory.d_coefficients, 0, goal_t, MAX_D, MIN_D);
+}
+
+double offcenter_cost(const Trajectory& trajectory,
+                      const Vehicle& target,
+                      const VectorXd& delta,
+                      double goal_t,
+                      const std::vector<Vehicle>& vehicles)
+{
+    Polynomial d_trajectory(trajectory.d_coefficients);
+
+    static const double dt = goal_t / TRAJECTORY_SAMPLES;
+    static const int lane_width = 4;
+    static const double lane_center = lane_width / 2;
+
+    double total_offcenter = 0;
+    for (int i = 1; i < TRAJECTORY_SAMPLES; i++)
+    {
+        double t = dt * i;
+        double d = d_trajectory.evaluate(t);
+        double d_in_lane = (d - (static_cast<int>(d) / lane_width) * lane_width);
+        // cout << "d:" << d << ",d_in_lane:" << d_in_lane << endl;
+        double offcenter = abs(lane_center - d_in_lane) / lane_center;
+        total_offcenter += offcenter;
+    }
+    return total_offcenter / TRAJECTORY_SAMPLES;
+}
+
+double backward_cost(const Trajectory& trajectory,
+                     const Vehicle& target,
+                     const VectorXd& delta,
+                     double goal_t,
+                     const std::vector<Vehicle>& vehicles)
+{
+    Polynomial s_trajectory(trajectory.s_coefficients);
+
+    const double dt = goal_t / TRAJECTORY_SAMPLES;
+
+    double prev_value = s_trajectory.evaluate(0);
+    for (int i = 1; i < TRAJECTORY_SAMPLES; i++)
+    {
+        double t = dt * i;
+        double value = s_trajectory.evaluate(t);
+        if (value < prev_value)
+        {
+            return 1;
+        }
+        prev_value = value;
+    }
+    return 0;
 }
