@@ -202,14 +202,16 @@ int main() {
 
                     Vector3d start_d;
                     start_d << frenet[1],
-                               (frenet[1] - prev_frenet[1]) / 0.02,
+                               0, // (frenet[1] - prev_frenet[1]) / 0.02,
                                0;
+
+                    cout << "start_s:" << start_s << ", start_d: " << start_d << endl;
 
                     // Pass forward vehicle.
                     VectorXd delta(6);
                     delta << 0, 0, 0, -4, 0, 0;
 
-                    double T = 5;
+                    double T = 2.5;
 
                     Trajectory best = PTG(start_s, start_d, *forward_vehicle, delta, T, env.get_vehicles());
                     auto s_poly = best.s_poly();

@@ -57,7 +57,7 @@ vector<Goal> generate_goals(const Vehicle& target,
                             double T,
                             double timestep = 0.5)
 {
-    const int goal_samples = 10;
+    const int goal_samples = 20;
 
     vector<Goal> goals;
 
