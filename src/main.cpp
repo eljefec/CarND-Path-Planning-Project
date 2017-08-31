@@ -183,6 +183,7 @@ int main() {
             }
 
             const int c_path_size = 50;
+            const double c_mph_to_mps = 2.24;
 
             if (forward_vehicle)
             {
@@ -195,9 +196,12 @@ int main() {
 
                     cout << "pts[0]:(" << ptsx[0] << ',' << ptsy[0] << "),pts[1]:(" << ptsx[1] << ',' << ptsy[1] << "),frenet_s:" << frenet[0] << ",prev_frenet_s:" << prev_frenet[0] << endl;
 
+                    double speed_estimate = car_speed / c_mph_to_mps;
+                    cout << "speed_estimate:" << speed_estimate << endl;
+
                     Vector3d start_s;
                     start_s << frenet[0],
-                               (frenet[0] - prev_frenet[0]) / 0.02,
+                               min(speed_estimate, abs((frenet[0] - prev_frenet[0]) / 0.02)),
                                0;
 
                     Vector3d start_d;
@@ -278,8 +282,6 @@ int main() {
                 double target_dist = sqrt((target_x * target_x) + (target_y * target_y));
 
                 double x_add_on = 0;
-
-                const double c_mph_to_mps = 2.24;
 
                 for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
                 {

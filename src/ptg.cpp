@@ -57,7 +57,7 @@ vector<Goal> generate_goals(const Vehicle& target,
                             double T,
                             double timestep = 0.5)
 {
-    const int goal_samples = 20;
+    const int goal_samples = 30;
 
     vector<Goal> goals;
 
@@ -107,12 +107,14 @@ Trajectory PTG(const VectorXd& start_s,
     vector<TrajectoryCost> costs;
     for (const auto& trajectory : trajectories)
     {
-        CostFunctions cost_functions(trajectory, target, delta, T, vehicles);
+        CostFunctions cost_functions(start_s, start_d, trajectory, target, delta, T, vehicles);
         double cost = cost_functions.cost();
+        cout << "cost:" << cost << endl;
         costs.emplace_back(TrajectoryCost{trajectory, cost});
     }
 
     // Find trajectory with minimum cost.
     auto it = min_element(costs.begin(), costs.end());
+    cout << "best cost:" << it->cost << endl;
     return (*it).trajectory;
 }

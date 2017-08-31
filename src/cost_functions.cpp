@@ -21,12 +21,16 @@ static const double MAX_JERK = 10;
 static const int TRAJECTORY_SAMPLES = 20;
 
 
-CostFunctions::CostFunctions(const Trajectory& trajectory,
+CostFunctions::CostFunctions(const Vector3d& start_s,
+                             const Vector3d& start_d,
+                             const Trajectory& trajectory,
                              const Vehicle& target,
                              const VectorXd& delta,
                              double goal_t,
                              const std::vector<Vehicle>& vehicles)
-  : trajectory(trajectory),
+  : start_s(start_s),
+    start_d(start_d),
+    trajectory(trajectory),
     target(target),
     delta(delta),
     goal_t(goal_t),
@@ -45,17 +49,17 @@ double CostFunctions::cost()
     using namespace std::placeholders;
 
     std::vector<WeightedCostFunction> cost_functions = {{bind(&CostFunctions::time_diff_cost, _1), 0.0},
-                                                        {bind(&CostFunctions::s_diff_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::d_diff_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::collision_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::buffer_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::s_diff_cost, _1), 50.0},
+                                                        {bind(&CostFunctions::d_diff_cost, _1), 10.0},
+                                                        {bind(&CostFunctions::collision_cost, _1), 100.0},
+                                                        {bind(&CostFunctions::buffer_cost, _1), 10.0},
                                                         {bind(&CostFunctions::efficiency_cost, _1), 1.0},
                                                         {bind(&CostFunctions::total_accel_cost, _1), 1.0},
                                                         {bind(&CostFunctions::total_jerk_cost, _1), 1.0},
                                                         {bind(&CostFunctions::max_speed_cost, _1), 1.0},
                                                         {bind(&CostFunctions::max_accel_cost, _1), 1.0},
                                                         {bind(&CostFunctions::max_jerk_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::offroad_cost, _1), 1.0},
+                                                        // {bind(&CostFunctions::offroad_cost, _1), 1.0},
                                                         // {bind(&CostFunctions::offcenter_cost, _1), 1.0},
                                                         {bind(&CostFunctions::backward_cost, _1), 5.0}
                                                        };
@@ -94,6 +98,7 @@ std::vector<Polynomial> get_function_and_derivatives(const VectorXd& coeffs, int
 double state_diff_cost(double goal_t,
                        const Vector3d& target_state,
                        const VectorXd& trajectory_coefficients,
+                       const Vector3d& start_state,
                        const Vector3d& stddev)
 {
     auto function_and_derivatives = get_function_and_derivatives(trajectory_coefficients, 2);
@@ -103,6 +108,8 @@ double state_diff_cost(double goal_t,
     {
         trajectory[i] = function_and_derivatives[i].evaluate(goal_t);
     }
+
+    trajectory += start_state;
 
     double cost = 0;
     for (int i = 0; i < 3; i++)
@@ -118,7 +125,7 @@ double CostFunctions::s_diff_cost()
     VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d s_target = target_state.head(3);
 
-    return state_diff_cost(goal_t, s_target, trajectory.s_coefficients, SIGMA_S);
+    return state_diff_cost(goal_t, s_target, trajectory.s_coefficients, start_s, SIGMA_S);
 }
 
 double CostFunctions::d_diff_cost()
@@ -126,7 +133,7 @@ double CostFunctions::d_diff_cost()
     VectorXd target_state = target.state_in(goal_t) + delta;
     Vector3d d_target = target_state.tail(3);
 
-    return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, SIGMA_D);
+    return state_diff_cost(goal_t, d_target, trajectory.d_coefficients, start_d, SIGMA_D);
 }
 
 double CostFunctions::collision_cost()

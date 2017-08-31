@@ -10,7 +10,9 @@ using Eigen::VectorXd;
 class CostFunctions
 {
 public:
-    CostFunctions(const Trajectory& trajectory,
+    CostFunctions(const Vector3d& start_s,
+                  const Vector3d& start_d,
+                  const Trajectory& trajectory,
                   const Vehicle& target,
                   const VectorXd& delta,
                   double goal_t,
@@ -34,6 +36,8 @@ private:
     double offcenter_cost();
     double backward_cost();
 
+    const Vector3d& start_s;
+    const Vector3d& start_d;
     const Trajectory& trajectory;
     const Vehicle& target;
     const VectorXd& delta;
