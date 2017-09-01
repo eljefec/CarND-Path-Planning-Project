@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <random>
+#include <unordered_map>
+#include <utility>
 #include "constants.h"
 #include "cost_functions.h"
 #include "poly_solver.h"
@@ -81,16 +83,41 @@ vector<Goal> generate_goals(const Vehicle& target,
 
 vector<Trajectory> generate_trajectories(const VectorXd& start_s,
                                          const VectorXd& start_d,
-                                         const vector<Goal>& goals)
+                                         const vector<Goal>& goals,
+                                         const unordered_map<double, JMT>& time_jmt_map)
 {
     vector<Trajectory> trajectories;
     for (const Goal& goal : goals)
     {
-        auto s_coefficients = JMT(start_s, goal.s, goal.t);
-        auto d_coefficients = JMT(start_d, goal.d, goal.t);
-        trajectories.emplace_back(Trajectory{s_coefficients, d_coefficients, goal.t});
+        const auto it = time_jmt_map.find(goal.t);
+        if (it == time_jmt_map.end())
+        {
+            throw runtime_error("Failed to find JMT for goal.");
+        }
+        else
+        {
+            const JMT& jmt = it->second;
+            auto s_coefficients = jmt.solve(start_s, goal.s);
+            auto d_coefficients = jmt.solve(start_d, goal.d);
+            trajectories.emplace_back(Trajectory{s_coefficients, d_coefficients, goal.t});
+        }
     }
     return trajectories;
+}
+
+unordered_map<double, JMT> generate_jmts(const vector<Goal>& goals)
+{
+    unordered_map<double, JMT> time_jmt_map;
+
+    for (const auto& goal : goals)
+    {
+        if (time_jmt_map.find(goal.t) == time_jmt_map.end())
+        {
+            time_jmt_map.insert(make_pair(goal.t, JMT(goal.t)));
+        }
+    }
+
+    return time_jmt_map;
 }
 
 Trajectory PTG(const VectorXd& start_s,
@@ -101,7 +128,8 @@ Trajectory PTG(const VectorXd& start_s,
                const vector<Vehicle>& vehicles)
 {
     auto goals = generate_goals(target, delta, T);
-    auto trajectories = generate_trajectories(start_s, start_d, goals);
+    auto jmts = generate_jmts(goals);
+    auto trajectories = generate_trajectories(start_s, start_d, goals, jmts);
 
     // Calculate trajectory costs.
     vector<TrajectoryCost> costs;

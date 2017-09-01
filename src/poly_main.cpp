@@ -66,7 +66,8 @@ int main() {
     {
         Vector3d start(tc[i].start[0], tc[i].start[1], tc[i].start[2]);
         Vector3d end(tc[i].end[0], tc[i].end[1], tc[i].end[2]);
-        VectorXd jmtEigen = JMT(start, end, tc[i].T);
+        JMT jmtSolver = JMT(tc[i].T);
+        VectorXd jmtEigen = jmtSolver.solve(start, end);
         std::vector<double> jmt(6);
         for (int i = 0; i < 6; i++)
         {

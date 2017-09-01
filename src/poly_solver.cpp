@@ -1,10 +1,27 @@
 #include "Eigen-3.3/Eigen/Dense"
 
+#include "poly_solver.h"
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
-VectorXd JMT(const Vector3d& start, const Vector3d& end, double T)
+JMT::JMT(double T)
+  : T(T),
+    T2(T*T)
+{
+    Eigen::Matrix3d A;
+    double T3 = T2 * T;
+    double T4 = T3 * T;
+    double T5 = T4 * T;
+    A << T3, T4, T5,
+        3*T2, 4*T3, 5*T4,
+        6*T, 12*T2, 20*T3;
+
+    A_inverse = A.inverse();
+}
+
+VectorXd JMT::solve(const Vector3d& start, const Vector3d& end) const
 {
     /*
     Calculate the Jerk Minimizing Trajectory that connects the initial state
@@ -29,23 +46,16 @@ VectorXd JMT(const Vector3d& start, const Vector3d& end, double T)
     > JMT( [0, 10, 0], [10, 10, 0], 1)
     [0.0, 10.0, 0.0, 0.0, 0.0, 0.0]
     */
+
     // AX = B
     // X = A^(-1)*B
-    Eigen::Matrix3d A;
-    double T2 = T * T;
-    double T3 = T2 * T;
-    double T4 = T3 * T;
-    double T5 = T4 * T;
-    A << T3, T4, T5,
-        3*T2, 4*T3, 5*T4,
-        6*T, 12*T2, 20*T3;
 
     Eigen::Vector3d B;
     B << end[0] - (start[0] + start[1] * T + start[2] / 2 * T2),
         end[1] - (start[1] + start[2] * T),
         end[2] - start[2];
 
-    Eigen::Vector3d X = A.inverse() * B;
+    Eigen::Vector3d X = A_inverse * B;
 
     VectorXd trajectory(6);
     trajectory << start[0], start[1], start[2] /2, X[0], X[1], X[2];
