@@ -34,6 +34,23 @@ std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane) const
         float d = v.d;
         if (d < (lane_width * lane + lane_width) && d > (lane_width * lane))
         {
+            static const double OCCUPIED_DISTANCE = 30;
+            if ((v.s > car_s) && (v.s - car_s) < OCCUPIED_DISTANCE)
+            {
+                if (forward_vehicle)
+                {
+                    if (v.s < forward_vehicle->s)
+                    {
+                        forward_vehicle.reset(new Vehicle(v));
+                    }
+                }
+                else
+                {
+                    forward_vehicle.reset(new Vehicle(v));
+                }
+            }
+
+            /*
             double vx = v.vx;
             double vy = v.vy;
             double check_speed = sqrt(vx * vx + vy * vy);
@@ -58,6 +75,7 @@ std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane) const
                     }
                 }
             }
+            */
         }
     }
 

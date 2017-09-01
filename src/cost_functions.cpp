@@ -48,11 +48,11 @@ double CostFunctions::cost()
 {
     using namespace std::placeholders;
 
-    std::vector<WeightedCostFunction> cost_functions = {{bind(&CostFunctions::time_diff_cost, _1), 0.0},
-                                                        {bind(&CostFunctions::s_diff_cost, _1), 50.0},
-                                                        {bind(&CostFunctions::d_diff_cost, _1), 10.0},
-                                                        {bind(&CostFunctions::collision_cost, _1), 100.0},
-                                                        {bind(&CostFunctions::buffer_cost, _1), 10.0},
+    std::vector<WeightedCostFunction> cost_functions = {{bind(&CostFunctions::time_diff_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::s_diff_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::d_diff_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::collision_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::buffer_cost, _1), 1.0},
                                                         {bind(&CostFunctions::efficiency_cost, _1), 1.0},
                                                         {bind(&CostFunctions::total_accel_cost, _1), 1.0},
                                                         {bind(&CostFunctions::total_jerk_cost, _1), 1.0},
@@ -61,7 +61,7 @@ double CostFunctions::cost()
                                                         {bind(&CostFunctions::max_jerk_cost, _1), 1.0},
                                                         // {bind(&CostFunctions::offroad_cost, _1), 1.0},
                                                         // {bind(&CostFunctions::offcenter_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::backward_cost, _1), 5.0}
+                                                        {bind(&CostFunctions::backward_cost, _1), 1.0}
                                                        };
 
     double cost = 0;
