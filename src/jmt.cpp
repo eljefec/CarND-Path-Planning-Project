@@ -1,6 +1,6 @@
 #include "Eigen-3.3/Eigen/Dense"
 
-#include "poly_solver.h"
+#include "jmt.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;

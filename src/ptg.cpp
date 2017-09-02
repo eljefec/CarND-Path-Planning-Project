@@ -4,7 +4,7 @@
 #include <utility>
 #include "constants.h"
 #include "cost_functions.h"
-#include "poly_solver.h"
+#include "jmt.h"
 #include "ptg.h"
 
 using namespace std;

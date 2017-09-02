@@ -7,8 +7,8 @@ add_definitions(-std=c++11)
 set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
 
-set(sources src/constants.cpp src/cost_functions.cpp src/environment.cpp src/main.cpp src/poly_solver.cpp src/polynomial.cpp src/ptg.cpp src/trajectory.cpp src/util.cpp src/vehicle.cpp)
-set(poly_sources src/poly_solver.cpp src/poly_main.cpp)
+set(sources src/constants.cpp src/cost_functions.cpp src/environment.cpp src/main.cpp src/jmt.cpp src/polynomial.cpp src/ptg.cpp src/trajectory.cpp src/util.cpp src/vehicle.cpp)
+set(jmt_sources src/jmt.cpp src/jmt_main.cpp)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
@@ -22,7 +22,7 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 
 add_executable(path_planning ${sources})
-add_executable(poly_solver ${poly_sources})
+add_executable(jmt_solver ${jmt_sources})
 
 target_link_libraries(path_planning z ssl uv uWS)
-target_link_libraries(poly_solver z)
+target_link_libraries(jmt_solver z)
