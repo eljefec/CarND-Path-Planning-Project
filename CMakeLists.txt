@@ -7,7 +7,7 @@ add_definitions(-std=c++11)
 set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
 
-set(sources src/constants.cpp src/cost_functions.cpp src/environment.cpp src/main.cpp src/jmt.cpp src/planner.cpp src/polynomial.cpp src/ptg.cpp src/telemetry.cpp src/trajectory.cpp src/util.cpp src/vehicle.cpp)
+set(sources src/constants.cpp src/cost_functions.cpp src/environment.cpp src/main.cpp src/jmt.cpp src/perspective.cpp src/planner.cpp src/polynomial.cpp src/ptg.cpp src/telemetry.cpp src/trajectory.cpp src/util.cpp src/vehicle.cpp)
 set(jmt_sources src/jmt.cpp src/jmt_main.cpp)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

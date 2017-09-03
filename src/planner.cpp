@@ -1,4 +1,5 @@
 #include "environment.h"
+#include "perspective.h"
 #include "planner.h"
 #include "ptg.h"
 #include "spline.h"
@@ -12,6 +13,88 @@ Planner::Planner(const Map& map)
   : map(map),
     ref_vel(49)
 {
+}
+
+std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
+                                     const Environment& env,
+                                     const Perspective& perspective,
+                                     const vector<double>& prev_tail_ptsx,
+                                     const vector<double>& prev_tail_ptsy)
+{
+    auto s_poly = trajectory.s_poly();
+    auto d_poly = trajectory.d_poly();
+
+    vector<double> downsampled_ptsx(prev_tail_ptsx);
+    vector<double> downsampled_ptsy(prev_tail_ptsy);
+
+    static const double DOWNSAMPLE_SECONDS = 1.0;
+
+    int downsample_size = trajectory.t / DOWNSAMPLE_SECONDS;
+
+    for (int i = 0; i <= downsample_size; i++)
+    {
+        double t = i * DOWNSAMPLE_SECONDS;
+        double s = s_poly.evaluate(t);
+        double d = d_poly.evaluate(t);
+        auto xy = env.getXY(s, d);
+
+        downsampled_ptsx.push_back(xy[0]);
+        downsampled_ptsy.push_back(xy[1]);
+    }
+
+    // Transform to car perspective.
+    perspective.transform_to_car(downsampled_ptsx, downsampled_ptsy);
+
+    for (int i = downsampled_ptsx.size() - 1; i > 0; i--)
+    {
+        if (downsampled_ptsx[i] < downsampled_ptsx[i - 1])
+        {
+            downsampled_ptsx.erase(downsampled_ptsx.begin() + i);
+            downsampled_ptsy.erase(downsampled_ptsy.begin() + i);
+        }
+    }
+
+    // Make spline out of downsampled points.
+    tk::spline spline;
+    spline.set_points(downsampled_ptsx, downsampled_ptsy);
+
+    vector<double> car_ptsx;
+    vector<double> car_ptsy;
+
+    static const double PATH_SEGMENT_SECONDS = 0.02;
+
+    int path_size = trajectory.t / PATH_SEGMENT_SECONDS;
+
+    // Sample (s,d) points at expected segments.
+    for (int i = 1; i <= path_size; i++)
+    {
+        double t = i * PATH_SEGMENT_SECONDS;
+        double s = s_poly.evaluate(t);
+        double d = d_poly.evaluate(t);
+
+        // Convert (s,d) to (x,y)
+        auto xy = env.getXY(s, d);
+
+        // Transform (x,y) to car perspective.
+        double x = perspective.transform_to_car(xy[0], xy[1]).x;
+
+        // Use spline to smooth x-value.
+        double y = spline(x);
+
+        car_ptsx.push_back(x);
+        car_ptsy.push_back(y);
+    }
+
+    // Transform to global coordinates.
+    perspective.transform_to_global(car_ptsx, car_ptsy);
+
+    vector<Point> points;
+    for (int i = 0; i < car_ptsx.size(); i++)
+    {
+        points.emplace_back(Point{car_ptsx[i], car_ptsy[i]});
+    }
+
+    return points;
 }
 
 Path Planner::plan_path(const Telemetry& tel)
@@ -107,6 +190,8 @@ Path Planner::plan_path(const Telemetry& tel)
 
     // cout << "forward_vehicle:" << (forward_vehicle.get() != nullptr) << endl;
 
+    Perspective perspective(ref_x, ref_y, ref_yaw);
+
     if (forward_vehicle)
     {
         // cout << "prev_size:" << prev_size << endl;
@@ -141,25 +226,15 @@ Path Planner::plan_path(const Telemetry& tel)
             double T = 2.5;
 
             Trajectory best = PTG(start_s, start_d, *forward_vehicle, delta, T, env.get_vehicles());
-            auto s_poly = best.s_poly();
-            auto d_poly = best.d_poly();
 
             // cout << "best.t:" << best.t << endl;
 
-            int path_size = best.t / 0.02;
+            auto points = smooth_trajectory(best, env, perspective, ptsx, ptsy);
 
-            for (int i = 1; i <= path_size; i++)
+            for (const auto& p : points)
             {
-                double t = i * 0.02;
-                double s = s_poly.evaluate(t);
-                double d = d_poly.evaluate(t);
-
-                // cout << "s_poly:" << s << ",d_poly:" << d << endl;
-
-                auto xy = env.getXY(s, d);
-
-                path.next_x_vals.push_back(xy[0]);
-                path.next_y_vals.push_back(xy[1]);
+                path.next_x_vals.push_back(p.x);
+                path.next_y_vals.push_back(p.y);
             }
         }
         else
@@ -187,15 +262,7 @@ Path Planner::plan_path(const Telemetry& tel)
         ptsy.push_back(next_wp1[1]);
         ptsy.push_back(next_wp2[1]);
 
-        // Rotate
-        for (int i = 0; i < ptsx.size(); i++)
-        {
-            double shift_x = ptsx[i] - ref_x;
-            double shift_y = ptsy[i] - ref_y;
-
-            ptsx[i] = (shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
-            ptsy[i] = (shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
-        }
+        perspective.transform_to_car(ptsx, ptsy);
 
         tk::spline s;
         s.set_points(ptsx, ptsy);
@@ -206,6 +273,9 @@ Path Planner::plan_path(const Telemetry& tel)
 
         double x_add_on = 0;
 
+        vector<double> new_ptsx;
+        vector<double> new_ptsy;
+
         for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
         {
             double N = (target_dist / (0.02 * ref_vel / c_mph_to_mps));
@@ -214,18 +284,16 @@ Path Planner::plan_path(const Telemetry& tel)
 
             x_add_on = x_point;
 
-            double x_ref = x_point;
-            double y_ref = y_point;
+            new_ptsx.push_back(x_point);
+            new_ptsy.push_back(y_point);
+        }
 
-            // Rotate back to normal after rotating above.
-            x_point = (x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw));
-            y_point = (x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw));
+        perspective.transform_to_global(new_ptsx, new_ptsy);
 
-            x_point += ref_x;
-            y_point += ref_y;
-
-            path.next_x_vals.push_back(x_point);
-            path.next_y_vals.push_back(y_point);
+        for (int i = 0; i < new_ptsx.size(); i++)
+        {
+            path.next_x_vals.push_back(new_ptsx[i]);
+            path.next_y_vals.push_back(new_ptsy[i]);
         }
     }
 
