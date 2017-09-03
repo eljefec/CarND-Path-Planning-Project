@@ -105,6 +105,8 @@ Path Planner::plan_path(const Telemetry& tel)
     const int c_path_size = 50;
     const double c_mph_to_mps = 2.24;
 
+    // cout << "forward_vehicle:" << (forward_vehicle.get() != nullptr) << endl;
+
     if (forward_vehicle)
     {
         // cout << "prev_size:" << prev_size << endl;
@@ -165,7 +167,7 @@ Path Planner::plan_path(const Telemetry& tel)
             // cout << "Follow prev path." << endl;
         }
     }
-    else
+    else if (prev_size < c_path_size)
     {
         // Keep lane.
         if (prev_size > 0)
