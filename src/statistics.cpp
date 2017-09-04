@@ -1,4 +1,5 @@
 #include "statistics.h"
+#include <cmath>
 
 using namespace std;
 
@@ -20,7 +21,7 @@ Statistics calculate_stats(const vector<double>& values)
         total += diff * diff;
     }
 
-    double stddev = total / values.size();
+    double stddev = sqrt(total / values.size());
 
     return Statistics{mean, stddev};
 }

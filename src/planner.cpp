@@ -16,27 +16,40 @@ Planner::Planner(const Map& map)
 {
 }
 
-vector<double> get_distances(const vector<Point>& points)
+vector<double> get_distances(const vector<double>& x, const vector<double>& y)
 {
     vector<double> distances;
-    for (int i = 1; i < points.size(); i++)
+    for (int i = 1; i < x.size(); i++)
     {
-        distances.push_back(distance(points[i].x, points[i-1].x, points[i].y, points[i-1].y));
+        distances.push_back(distance(x[i-1], y[i-1], x[i], y[i]));
     }
 
     return distances;
 }
 
-void fill_gaps(vector<Point>& points)
+void fill_gaps(vector<double>& x, vector<double>& y)
 {
-    auto distances = get_distances(points);
+    auto distances = get_distances(x, y);
     Statistics stats = calculate_stats(distances);
-    for (auto dist : distances)
+    cout << "gap mean:" << stats.mean << ",stddev:" << stats.stddev << endl;
+    vector<int> gap_indices;
+    for (int i = 0; i < distances.size(); i++)
     {
-        if (dist > (2 * stats.stddev))
+        auto diff_from_mean = abs(distances[i] - stats.mean);
+
+        if (diff_from_mean > (2.5 * stats.stddev))
         {
-            cout << "Gap larger than 2*stddev." << endl;
+            gap_indices.push_back(i);
         }
+    }
+    if (!gap_indices.empty())
+    {
+        cout << "Warn: Gap found at i=[";
+        for (auto gap : gap_indices)
+        {
+            cout << gap << ' ';
+        }
+        cout << ']' << endl;
     }
 }
 
@@ -118,8 +131,6 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
     {
         points.emplace_back(Point{car_ptsx[i], car_ptsy[i]});
     }
-
-    fill_gaps(points);
 
     return points;
 }
@@ -263,6 +274,8 @@ Path Planner::plan_path(const Telemetry& tel)
                 path.next_x_vals.push_back(p.x);
                 path.next_y_vals.push_back(p.y);
             }
+
+            fill_gaps(path.next_x_vals, path.next_y_vals);
         }
         else
         {
