@@ -3,6 +3,7 @@
 #include "planner.h"
 #include "ptg.h"
 #include "spline.h"
+#include "statistics.h"
 #include "util.h"
 
 using namespace std;
@@ -13,6 +14,30 @@ Planner::Planner(const Map& map)
   : map(map),
     ref_vel(49)
 {
+}
+
+vector<double> get_distances(const vector<Point>& points)
+{
+    vector<double> distances;
+    for (int i = 1; i < points.size(); i++)
+    {
+        distances.push_back(distance(points[i].x, points[i-1].x, points[i].y, points[i-1].y));
+    }
+
+    return distances;
+}
+
+void fill_gaps(vector<Point>& points)
+{
+    auto distances = get_distances(points);
+    Statistics stats = calculate_stats(distances);
+    for (auto dist : distances)
+    {
+        if (dist > (2 * stats.stddev))
+        {
+            cout << "Gap larger than 2*stddev." << endl;
+        }
+    }
 }
 
 std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
@@ -93,6 +118,8 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
     {
         points.emplace_back(Point{car_ptsx[i], car_ptsy[i]});
     }
+
+    fill_gaps(points);
 
     return points;
 }
