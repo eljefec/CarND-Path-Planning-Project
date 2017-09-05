@@ -157,6 +157,22 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
     return points;
 }
 
+vector<vector<double>> calc_derivative(const vector<vector<double>>& values)
+{
+    vector<vector<double>> derivative;
+    for (int i = 1; i < values.size(); i++)
+    {
+        vector<double> single_point_derivative;
+        for (int j = 0; j < values[i].size(); j++)
+        {
+            single_point_derivative.push_back((values[i][j] - values[i-1][j]) / 0.02);
+        }
+        derivative.push_back(single_point_derivative);
+    }
+
+    return derivative;
+}
+
 Path Planner::plan_path(const Telemetry& tel)
 {
     double car_x = tel.car_x;
@@ -258,26 +274,47 @@ Path Planner::plan_path(const Telemetry& tel)
         {
             // cout << "Forward vehicle detected. id:" << forward_vehicle->id << endl;
 
-            auto prev_frenet = env.getFrenet(ptsx[0], ptsy[0], ref_yaw);
-            auto frenet = env.getFrenet(ptsx[1], ptsy[1], ref_yaw);
+            vector<vector<double>> frenet;
+            if (previous_path_x.size() > 2)
+            {
+                frenet.push_back(env.getFrenet(*(previous_path_x.rbegin() - 2), *(previous_path_y.rbegin() - 2), ref_yaw));
+            }
+
+            frenet.push_back(env.getFrenet(ptsx[0], ptsy[0], ref_yaw));
+            frenet.push_back(env.getFrenet(ptsx[1], ptsy[1], ref_yaw));
+
+            auto frenet_vels = calc_derivative(frenet);
+            auto frenet_accels = calc_derivative(frenet_vels);
 
             // cout << "pts[0]:(" << ptsx[0] << ',' << ptsy[0] << "),pts[1]:(" << ptsx[1] << ',' << ptsy[1] << "),frenet_s:" << frenet[0] << ",prev_frenet_s:" << prev_frenet[0] << endl;
 
             double speed_estimate = car_speed / c_mph_to_mps;
             // cout << "speed_estimate:" << speed_estimate << endl;
 
+            double s_vel = (*frenet_vels.rbegin())[0];
+            double d_vel = (*frenet_vels.rbegin())[1];
+
+            double s_accel = 0;
+            double d_accel = 0;
+            if (!frenet_accels.empty())
+            {
+                s_accel = min(0.1, max(-0.1, (*frenet_accels.rbegin())[0]));
+                d_accel = min(0.05, max(-0.05, (*frenet_accels.rbegin())[1]));
+                cout << "s_accel:" << s_accel << ",d_accel:" << d_accel << endl;
+            }
+
             Vector3d start_s;
-            start_s << frenet[0],
-                       min(speed_estimate, abs((frenet[0] - prev_frenet[0]) / 0.02)),
-                       0;
+            start_s << (*frenet.rbegin())[0],
+                       min(speed_estimate, abs(s_vel)),
+                       s_accel;
 
             // Cap d_vel to lessen oscillating path.
-            double d_vel = min(0.25, max(-0.25, (frenet[1] - prev_frenet[1]) / 0.02));
+            double d_vel_capped = min(0.25, max(-0.25, d_vel));
 
             Vector3d start_d;
-            start_d << frenet[1],
-                       d_vel,
-                       0;
+            start_d << (*frenet.rbegin())[1],
+                       d_vel_capped,
+                       d_accel;
 
             // cout << "start_s:" << start_s << ", start_d: " << start_d << endl;
 
