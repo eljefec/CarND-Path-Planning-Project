@@ -271,9 +271,12 @@ Path Planner::plan_path(const Telemetry& tel)
                        min(speed_estimate, abs((frenet[0] - prev_frenet[0]) / 0.02)),
                        0;
 
+            // Cap d_vel to lessen oscillating path.
+            double d_vel = min(0.25, max(-0.25, (frenet[1] - prev_frenet[1]) / 0.02));
+
             Vector3d start_d;
             start_d << frenet[1],
-                       0, // (frenet[1] - prev_frenet[1]) / 0.02,
+                       d_vel,
                        0;
 
             // cout << "start_s:" << start_s << ", start_d: " << start_d << endl;
