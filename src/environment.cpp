@@ -82,6 +82,20 @@ std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane) const
     return forward_vehicle;
 }
 
+vector<unique_ptr<Vehicle>> Environment::get_forward_vehicles() const
+{
+    vector<unique_ptr<Vehicle>> forward_vehicles(3);
+    for (int lane = 0; lane < 3; lane++)
+    {
+        auto lane_vehicle = lane_is_occupied(lane);
+        if (lane_vehicle)
+        {
+            forward_vehicles[lane].reset(lane_vehicle.release());
+        }
+    }
+    return forward_vehicles;
+}
+
 int ClosestWaypoint(double x, double y, const vector<double>& maps_x, const vector<double>& maps_y)
 {
 
