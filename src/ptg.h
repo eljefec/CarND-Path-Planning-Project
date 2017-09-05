@@ -16,9 +16,9 @@ struct PTG_Goal
     double T;
 };
 
-Trajectory PTG(const VectorXd& start_s,
-               const VectorXd& start_d,
-               const std::vector<PTG_Goal>& goals,
-               const std::vector<Vehicle>& vehicles);
+std::unique_ptr<Trajectory> PTG(const VectorXd& start_s,
+                                const VectorXd& start_d,
+                                const std::vector<PTG_Goal>& goals,
+                                const std::vector<Vehicle>& vehicles);
 
 #endif

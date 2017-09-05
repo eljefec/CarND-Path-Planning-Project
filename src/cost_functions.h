@@ -1,11 +1,18 @@
 #ifndef PTG_H
 #define PTG_H
 
+#include <limits>
 #include "trajectory.h"
 #include "vehicle.h"
 #include "Eigen-3.3/Eigen/Dense"
 
 using Eigen::VectorXd;
+
+struct Evaluation
+{
+    bool feasible;
+    double cost;
+};
 
 class CostFunctions
 {
@@ -18,9 +25,15 @@ public:
                   double goal_t,
                   const std::vector<Vehicle>& vehicles);
 
-    double cost();
+    Evaluation evaluate();
 
 private:
+    double max_derivative_cost(const VectorXd& trajectory_coefficients,
+                               int derivative_count,
+                               double goal_t,
+                               double max,
+                               double min = std::numeric_limits<double>::min());
+
     double time_diff_cost();
     double s_diff_cost();
     double d_diff_cost();
@@ -45,6 +58,8 @@ private:
     const VectorXd& delta;
     double goal_t;
     const std::vector<Vehicle>& vehicles;
+
+    bool feasible;
 };
 
 #endif

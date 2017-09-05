@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <memory>
 #include <random>
 #include <unordered_map>
 #include <utility>
@@ -131,10 +132,10 @@ unordered_map<double, JMT> generate_jmts(const vector<Goal>& goals)
     return time_jmt_map;
 }
 
-Trajectory PTG(const VectorXd& start_s,
-               const VectorXd& start_d,
-               const vector<PTG_Goal>& ptg_goals,
-               const vector<Vehicle>& vehicles)
+std::unique_ptr<Trajectory> PTG(const VectorXd& start_s,
+                                const VectorXd& start_d,
+                                const vector<PTG_Goal>& ptg_goals,
+                                const vector<Vehicle>& vehicles)
 {
     Stopwatch sw(__func__);
 
@@ -154,14 +155,24 @@ Trajectory PTG(const VectorXd& start_s,
         for (const auto& trajectory : trajectories)
         {
             CostFunctions cost_functions(start_s, start_d, trajectory, ptg_goal.target, ptg_goal.delta, ptg_goal.T, vehicles);
-            double cost = cost_functions.cost();
-            // cout << "cost:" << cost << endl;
-            costs.emplace_back(TrajectoryCost{trajectory, cost});
+            Evaluation eval = cost_functions.evaluate();
+            // cout << "cost:" << eval.cost << endl;
+            if (eval.feasible)
+            {
+                costs.emplace_back(TrajectoryCost{trajectory, cost});
+            }
         }
     }
 
-    // Find trajectory with minimum cost.
-    auto it = min_element(costs.begin(), costs.end());
-    // cout << "best cost:" << it->cost << endl;
-    return (*it).trajectory;
+    if (costs.empty())
+    {
+        return std::unique_ptr<Trajectory>();
+    }
+    else
+    {
+        // Find trajectory with minimum cost.
+        auto it = min_element(costs.begin(), costs.end());
+        // cout << "best cost:" << it->cost << endl;
+        return std::unique_ptr<Trajectory>(new Trajectory((*it).trajectory));
+    }
 }

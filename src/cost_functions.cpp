@@ -1,6 +1,5 @@
 #include <cmath>
 #include <iostream>
-#include <limits>
 #include "constants.h"
 #include "cost_functions.h"
 #include "polynomial.h"
@@ -36,7 +35,8 @@ CostFunctions::CostFunctions(const Vector3d& start_s,
     target(target),
     delta(delta),
     goal_t(goal_t),
-    vehicles(vehicles)
+    vehicles(vehicles),
+    feasible(true)
 {
 }
 
@@ -46,7 +46,7 @@ struct WeightedCostFunction
     double weight;
 };
 
-double CostFunctions::cost()
+Evaluation CostFunctions::evaluate()
 {
     using namespace std::placeholders;
 
@@ -73,7 +73,7 @@ double CostFunctions::cost()
     {
         cost += wcf.weight * wcf.cost_function(this);
     }
-    return cost;
+    return Evaluation{feasible, cost};
 }
 
 double logistic(double x)
@@ -141,7 +141,16 @@ double CostFunctions::collision_cost()
 {
     double nearest = trajectory.nearest_approach(vehicles);
 
-    return (nearest < SAFE_VEHICLE_DISTANCE) ? 1.0 : 0.0;
+    if (nearest < SAFE_VEHICLE_DISTANCE)
+    {
+        cout << "collision" << endl;
+        feasible = false;
+        return 1.0;
+    }
+    else
+    {
+        return 0.0;
+    }
 }
 
 double CostFunctions::buffer_cost()
@@ -193,11 +202,11 @@ double CostFunctions::total_jerk_cost()
     return total_derivative_cost(trajectory.s_coefficients, 3, goal_t, EXPECTED_JERK_IN_ONE_SEC);
 }
 
-double max_derivative_cost(const VectorXd& trajectory_coefficients,
-                           int derivative_count,
-                           double goal_t,
-                           double max,
-                           double min = numeric_limits<double>::min())
+double CostFunctions::max_derivative_cost(const VectorXd& trajectory_coefficients,
+                                          int derivative_count,
+                                          double goal_t,
+                                          double max,
+                                          double min)
 {
     auto function_and_derivatives = get_function_and_derivatives(trajectory_coefficients, derivative_count);
     auto derivative = function_and_derivatives[derivative_count];
@@ -209,6 +218,8 @@ double max_derivative_cost(const VectorXd& trajectory_coefficients,
         double value = derivative.evaluate(t);
         if (abs(value) > max)
         {
+            cout << "max exceeded" << endl;
+            feasible = false;
             return 1;
         }
         if (value < min)
@@ -285,6 +296,8 @@ double CostFunctions::backward_cost()
         double value = s_trajectory.evaluate(t);
         if (value < prev_value)
         {
+            cout << "backwards" << endl;
+            feasible = false;
             return 1;
         }
         prev_value = value;
