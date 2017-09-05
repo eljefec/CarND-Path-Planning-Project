@@ -10,6 +10,8 @@ using namespace std;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
+static const double c_mph_to_mps = 2.24;
+
 Planner::Planner(const Map& map)
   : map(map),
     ref_vel(49)
@@ -27,21 +29,41 @@ vector<double> get_distances(const vector<double>& x, const vector<double>& y)
     return distances;
 }
 
-void fill_gaps(vector<double>& x, vector<double>& y)
+void remove_gaps(vector<double>& x, vector<double>& y)
 {
     auto distances = get_distances(x, y);
     Statistics stats = calculate_stats(distances);
     cout << "gap mean:" << stats.mean << ",stddev:" << stats.stddev << endl;
     vector<int> gap_indices;
+    double x_offset_total = 0;
+    double y_offset_total = 0;
     for (int i = 0; i < distances.size(); i++)
     {
-        auto diff_from_mean = abs(distances[i] - stats.mean);
+        // Apply accumulated offset before calculating new offset.
+        x[i+1] -= x_offset_total;
+        y[i+1] -= y_offset_total;
 
-        if (diff_from_mean > (2.5 * stats.stddev))
+        auto diff_from_mean = distances[i] - stats.mean;
+
+        if (diff_from_mean > (3 * stats.stddev))
         {
+            double scale = (distances[i] - stats.mean) / distances[i];
+
+            double x_offset = (x[i+1] - x[i]) * scale;
+            double y_offset = (y[i+1] - y[i]) * scale;
+
+            x[i+1] -= x_offset;
+            y[i+1] -= y_offset;
+
+            x_offset_total += x_offset;
+            y_offset_total += y_offset;
+
+            cout << "scale:" << scale << ",offset (x,y):(" << x_offset_total << ',' << y_offset_total << ')' << endl;
+
             gap_indices.push_back(i);
         }
     }
+
     if (!gap_indices.empty())
     {
         cout << "Warn: Gap found at i=[";
@@ -224,7 +246,6 @@ Path Planner::plan_path(const Telemetry& tel)
     }
 
     const int c_path_size = 50;
-    const double c_mph_to_mps = 2.24;
 
     // cout << "forward_vehicle:" << (forward_vehicle.get() != nullptr) << endl;
 
@@ -275,7 +296,10 @@ Path Planner::plan_path(const Telemetry& tel)
                 path.next_y_vals.push_back(p.y);
             }
 
-            fill_gaps(path.next_x_vals, path.next_y_vals);
+            remove_gaps(path.next_x_vals, path.next_y_vals);
+
+            // Run second time because large outlier can mask small gaps.
+            remove_gaps(path.next_x_vals, path.next_y_vals);
         }
         else
         {
