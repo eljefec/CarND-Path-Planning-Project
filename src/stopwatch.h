@@ -6,7 +6,9 @@
 class Stopwatch
 {
 public:
-    Stopwatch(bool print_at_destruction);
+    // When name is not null, the destructor of Stopwatch will print its elapsed time.
+    // Use __func__ for name to print the function's name.
+    Stopwatch(const char* name = nullptr);
 
     ~Stopwatch();
 
@@ -18,7 +20,7 @@ public:
     }
 
 private:
-    bool print_at_destruction;
+    const char* name;
     std::chrono::high_resolution_clock::time_point start;
 };
 

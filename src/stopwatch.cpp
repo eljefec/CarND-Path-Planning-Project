@@ -5,16 +5,18 @@
 using namespace std;
 using namespace std::chrono;
 
-Stopwatch::Stopwatch(bool print_at_destruction)
-  : print_at_destruction(print_at_destruction),
+static bool enable_printing = true;
+
+Stopwatch::Stopwatch(const char* name)
+  : name(name),
     start(high_resolution_clock::now())
 {
 }
 
 Stopwatch::~Stopwatch()
 {
-    if (print_at_destruction)
+    if (enable_printing && (name != nullptr))
     {
-        cout << elapsed_time<microseconds>() << " microsecs" << endl;
+        cout << name << ": " << elapsed_time<microseconds>() << " microsecs" << endl;
     }
 }

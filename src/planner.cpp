@@ -4,6 +4,7 @@
 #include "ptg.h"
 #include "spline.h"
 #include "statistics.h"
+#include "stopwatch.h"
 #include "util.h"
 
 using namespace std;
