@@ -4,6 +4,7 @@
 #include "ptg.h"
 #include "spline.h"
 #include "statistics.h"
+#include "stopwatch.h"
 #include "util.h"
 
 using namespace std;
@@ -281,13 +282,70 @@ Path Planner::plan_path(const Telemetry& tel)
 
             // cout << "start_s:" << start_s << ", start_d: " << start_d << endl;
 
-            // Pass forward vehicle.
-            VectorXd delta(6);
-            delta << 0, 0, 0, 0, 0, 0;
+            vector<PTG_Goal> ptg_goals;
 
-            double T = 2.5;
+            {
+                // Follow behind.
+                const double T = 2.5;
+                VectorXd delta(6);
+                delta << -3, 0, 0, 0, 0, 0;
+                ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
+            }
 
-            Trajectory best = PTG(start_s, start_d, *forward_vehicle, delta, T, env.get_vehicles());
+            auto forward_vehicles = env.get_forward_vehicles();
+
+            if (forward_vehicles[0] && forward_vehicles[1] && forward_vehicles[2])
+            {
+                int fastest_lane = 0;
+                for (int lane = 1; lane < 3; lane++)
+                {
+                    if (forward_vehicles[lane]->speed > forward_vehicles[fastest_lane]->speed)
+                    {
+                        fastest_lane = lane;
+                    }
+                }
+
+                // Follow in fastest lane.
+                const double T = 4;
+                VectorXd delta(6);
+                delta << -3, 0, 0, 0, 0, 0;
+                ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[fastest_lane], delta, T});
+            }
+            else
+            {
+                if (!forward_vehicles[0])
+                {
+                    {
+                        // Pass left.
+                        const double T = 4;
+                        VectorXd delta(6);
+                        delta << -3, 0, 0, -4, 0, 0;
+                        ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
+                    }
+                }
+                else if (!forward_vehicles[1])
+                {
+                    {
+                        // Pass in middle lane.
+                        const double T = 4;
+                        VectorXd delta(6);
+                        delta << -3, 0, 0, 4, 0, 0;
+                        ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[0], delta, T});
+                    }
+                }
+                else if (!forward_vehicles[2])
+                {
+                    {
+                        // Pass right.
+                        const double T = 4;
+                        VectorXd delta(6);
+                        delta << -3, 0, 0, 4, 0, 0;
+                        ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
+                    }
+                }
+            }
+
+            Trajectory best = PTG(start_s, start_d, ptg_goals, env.get_vehicles());
 
             // cout << "best.t:" << best.t << endl;
 
@@ -362,6 +420,11 @@ Path Planner::plan_path(const Telemetry& tel)
             path.next_x_vals.push_back(new_ptsx[i]);
             path.next_y_vals.push_back(new_ptsy[i]);
         }
+
+        remove_gaps(path.next_x_vals, path.next_y_vals);
+
+        // Run second time because large outlier can mask small gaps.
+        remove_gaps(path.next_x_vals, path.next_y_vals);
     }
 
     return path;

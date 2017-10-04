@@ -6,6 +6,7 @@
 #include "cost_functions.h"
 #include "jmt.h"
 #include "ptg.h"
+#include "stopwatch.h"
 
 using namespace std;
 
@@ -54,20 +55,27 @@ vector<Goal> perturb_goal(const VectorXd& target_state, int sample_count, double
     return goals;
 }
 
-vector<Goal> generate_goals(const Vehicle& target,
-                            const VectorXd& delta,
-                            double T,
+struct PTG_Goal
+{
+    Vehicle target;
+    VectorXd delta;
+    double T;
+};
+
+vector<Goal> generate_goals(const PTG_Goal& ptg_goal,
                             double timestep = 0.5)
 {
-    const int goal_samples = 10;
+    Stopwatch sw(__func__);
+
+    const int goal_samples = 5;
 
     vector<Goal> goals;
 
-    const double t_range = 4 * timestep;
+    const double t_range = 2 * timestep;
 
-    for (double t = T - t_range; t <= T + t_range; t += timestep)
+    for (double t = ptg_goal.T - t_range; t <= ptg_goal.T + t_range; t += timestep)
     {
-        VectorXd target_state = target.state_in(t) + delta;
+        VectorXd target_state = ptg_goal.target.state_in(t) + ptg_goal.delta;
 
         auto goal_s = target_state.head(3);
         auto goal_d = target_state.tail(3);
@@ -86,6 +94,8 @@ vector<Trajectory> generate_trajectories(const VectorXd& start_s,
                                          const vector<Goal>& goals,
                                          const unordered_map<double, JMT>& time_jmt_map)
 {
+    Stopwatch sw(__func__);
+
     vector<Trajectory> trajectories;
     for (const Goal& goal : goals)
     {
@@ -107,6 +117,8 @@ vector<Trajectory> generate_trajectories(const VectorXd& start_s,
 
 unordered_map<double, JMT> generate_jmts(const vector<Goal>& goals)
 {
+    Stopwatch sw(__func__);
+
     unordered_map<double, JMT> time_jmt_map;
 
     for (const auto& goal : goals)
@@ -122,23 +134,29 @@ unordered_map<double, JMT> generate_jmts(const vector<Goal>& goals)
 
 Trajectory PTG(const VectorXd& start_s,
                const VectorXd& start_d,
-               const Vehicle& target,
-               const VectorXd& delta,
-               double T,
+               const vector<PTG_Goal>& ptg_goals,
                const vector<Vehicle>& vehicles)
 {
-    auto goals = generate_goals(target, delta, T);
-    auto jmts = generate_jmts(goals);
-    auto trajectories = generate_trajectories(start_s, start_d, goals, jmts);
+    Stopwatch sw(__func__);
 
-    // Calculate trajectory costs.
     vector<TrajectoryCost> costs;
-    for (const auto& trajectory : trajectories)
+
+    for (const PTG_Goal& ptg_goal : ptg_goals)
     {
-        CostFunctions cost_functions(start_s, start_d, trajectory, target, delta, T, vehicles);
-        double cost = cost_functions.cost();
-        // cout << "cost:" << cost << endl;
-        costs.emplace_back(TrajectoryCost{trajectory, cost});
+        auto goals = generate_goals(ptg_goal);
+        auto jmts = generate_jmts(goals);
+        auto trajectories = generate_trajectories(start_s, start_d, goals, jmts);
+
+        Stopwatch sw("Calc trajectory costs");
+
+        // Calculate trajectory costs.
+        for (const auto& trajectory : trajectories)
+        {
+            CostFunctions cost_functions(start_s, start_d, trajectory, ptg_goal.target, ptg_goal.delta, ptg_goal.T, vehicles);
+            double cost = cost_functions.cost();
+            // cout << "cost:" << cost << endl;
+            costs.emplace_back(TrajectoryCost{trajectory, cost});
+        }
     }
 
     // Find trajectory with minimum cost.

@@ -19,6 +19,8 @@ public:
 
     std::unique_ptr<Vehicle> lane_is_occupied(int lane) const;
 
+    std::vector<std::unique_ptr<Vehicle>> get_forward_vehicles() const;
+
     std::vector<double> getFrenet(double x, double y, double theta) const;
 
     std::vector<double> getXY(double s, double d) const;
