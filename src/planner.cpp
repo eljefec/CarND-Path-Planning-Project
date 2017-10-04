@@ -420,6 +420,11 @@ Path Planner::plan_path(const Telemetry& tel)
             path.next_x_vals.push_back(new_ptsx[i]);
             path.next_y_vals.push_back(new_ptsy[i]);
         }
+
+        remove_gaps(path.next_x_vals, path.next_y_vals);
+
+        // Run second time because large outlier can mask small gaps.
+        remove_gaps(path.next_x_vals, path.next_y_vals);
     }
 
     return path;
