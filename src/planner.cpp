@@ -72,6 +72,11 @@ vector<double> get_vectors(const vector<double>& v)
     return vectors;
 }
 
+bool signs_are_different(double a, double b)
+{
+    return (a > 0 && b < 0) || (a < 0 && b > 0) || (a == 0) || (b == 0);
+}
+
 void remove_kinks(vector<double>& x, vector<double>& y)
 {
     auto x_vec = get_vectors(x);
@@ -83,10 +88,10 @@ void remove_kinks(vector<double>& x, vector<double>& y)
     {
         auto xdiff_from_mean = x_vec[i] - x_vec_stats.mean;
         auto ydiff_from_mean = y_vec[i] - y_vec_stats.mean;
-        if (abs(xdiff_from_mean) > (3 * x_vec_stats.stddev)
-            || abs(ydiff_from_mean) > (3 * y_vec_stats.stddev))
+        if (abs(xdiff_from_mean) > (3 * x_vec_stats.stddev) && signs_are_different(xdiff_from_mean, x_vec_stats.mean)
+            || abs(ydiff_from_mean) > (3 * y_vec_stats.stddev) && signs_are_different(ydiff_from_mean, y_vec_stats.mean))
         {
-            cout << "Kink: (i, x_vec[i], y_vec[i]): (" << i << x_vec[i] << y_vec[i] << "). (x_vec.mean, y_vec.mean): (" << x_vec_stats.mean << ',' << y_vec_stats.mean << ")." << endl;
+            cout << "Kink: (i, x_vec[i], y_vec[i]): (" << i << ',' << x_vec[i] << ',' << y_vec[i] << "). (x_vec.mean, y_vec.mean): (" << x_vec_stats.mean << ',' << y_vec_stats.mean << ")." << endl;
 
             kink_indices.emplace_back(i);
         }
@@ -486,7 +491,7 @@ Path Planner::plan_path(const Telemetry& tel)
 
         // print(ptsx, ptsy, __func__);
 
-        // check_spline(ptsx, ptsy, __func__);
+        check_spline(ptsx, ptsy, __func__);
 
         /*
         if (has_spline_violation(ptsx))
