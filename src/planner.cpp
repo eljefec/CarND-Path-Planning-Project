@@ -404,7 +404,7 @@ Path Planner::plan_path(const Telemetry& tel)
                 }
 
                 // Follow in fastest lane.
-                const double T = 4;
+                const double T = 3;
                 VectorXd delta(6);
                 delta << -3, 0, 0, 0, 0, 0;
                 ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[fastest_lane], delta, T});
@@ -415,7 +415,7 @@ Path Planner::plan_path(const Telemetry& tel)
                 {
                     {
                         // Pass left.
-                        const double T = 4;
+                        const double T = 3;
                         VectorXd delta(6);
                         delta << -3, 0, 0, -4, 0, 0;
                         ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
@@ -425,7 +425,7 @@ Path Planner::plan_path(const Telemetry& tel)
                 {
                     {
                         // Pass in middle lane.
-                        const double T = 4;
+                        const double T = 3;
                         VectorXd delta(6);
                         delta << -3, 0, 0, 4, 0, 0;
                         ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[0], delta, T});
@@ -435,7 +435,7 @@ Path Planner::plan_path(const Telemetry& tel)
                 {
                     {
                         // Pass right.
-                        const double T = 4;
+                        const double T = 3;
                         VectorXd delta(6);
                         delta << -3, 0, 0, 4, 0, 0;
                         ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
