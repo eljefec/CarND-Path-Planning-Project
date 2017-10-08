@@ -11,13 +11,13 @@ using Eigen::VectorXd;
 using Eigen::Vector3d;
 using namespace std;
 
-static const double SAFE_VEHICLE_DISTANCE = 3;
+static const double SAFE_VEHICLE_DISTANCE = 1.5;
 static const double EXPECTED_ACC_IN_ONE_SEC = 1;
 static const double EXPECTED_JERK_IN_ONE_SEC = 2;
 // 22.1 meters per second is 49.5 miles per hour.
-static const double MAX_SPEED = 22.1;
-static const double MAX_ACCEL = 10;
-static const double MAX_JERK = 10;
+static const double MAX_SPEED = 20;
+static const double MAX_ACCEL = 5;
+static const double MAX_JERK = 5;
 static const int TRAJECTORY_SAMPLES = 20;
 
 
@@ -48,7 +48,7 @@ double CostFunctions::cost()
 {
     using namespace std::placeholders;
 
-    std::vector<WeightedCostFunction> cost_functions = {{bind(&CostFunctions::time_diff_cost, _1), 1.0},
+    std::vector<WeightedCostFunction> cost_functions = {// {bind(&CostFunctions::time_diff_cost, _1), 1.0},
                                                         {bind(&CostFunctions::s_diff_cost, _1), 1.0},
                                                         {bind(&CostFunctions::d_diff_cost, _1), 1.0},
                                                         {bind(&CostFunctions::collision_cost, _1), 1.0},
@@ -144,7 +144,7 @@ double CostFunctions::buffer_cost()
 {
     double nearest = trajectory.nearest_approach(vehicles);
 
-    return logistic(SAFE_VEHICLE_DISTANCE / nearest);
+    return logistic(3 * SAFE_VEHICLE_DISTANCE / nearest);
 }
 
 double CostFunctions::efficiency_cost()
