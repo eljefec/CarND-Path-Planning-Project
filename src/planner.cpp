@@ -457,10 +457,10 @@ Path Planner::plan_path(const Telemetry& tel)
 
             remove_gaps(path.next_x_vals, path.next_y_vals);
 
+            remove_kinks(path.next_x_vals, path.next_y_vals);
+
             // Run second time because large outlier can mask small gaps.
             remove_gaps(path.next_x_vals, path.next_y_vals);
-
-            remove_kinks(path.next_x_vals, path.next_y_vals);
         }
         else
         {
@@ -534,6 +534,8 @@ Path Planner::plan_path(const Telemetry& tel)
         }
 
         remove_gaps(path.next_x_vals, path.next_y_vals);
+
+        remove_kinks(path.next_x_vals, path.next_y_vals);
 
         // Run second time because large outlier can mask small gaps.
         remove_gaps(path.next_x_vals, path.next_y_vals);
