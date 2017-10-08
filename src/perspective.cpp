@@ -9,23 +9,32 @@ Perspective::Perspective(double ref_x, double ref_y, double ref_yaw)
 }
 
 void Perspective::transform_to_car(std::vector<double>& ptsx,
-                                   std::vector<double>& ptsy) const
+                                   std::vector<double>& ptsy,
+                                   std::ostream* os) const
 {
     for (int i = 0; i < ptsx.size(); i++)
     {
-        Point p = transform_to_car(ptsx[i], ptsy[i]);
+        Point p = transform_to_car(ptsx[i], ptsy[i], os);
         ptsx[i] = p.x;
         ptsy[i] = p.y;
     }
 }
 
-Point Perspective::transform_to_car(double x, double y) const
+Point Perspective::transform_to_car(double x, double y, std::ostream* os) const
 {
     double shift_x = x - ref_x;
     double shift_y = y - ref_y;
 
     double result_x = (shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
     double result_y = (shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
+
+    if (os)
+    {
+        std::ostream& o = *os;
+
+        o << "(ref_x, ref_y, ref_yaw): (" << ref_x << ',' << ref_y << ',' << ref_yaw << "). ";
+        o << "(shift_x, shift_y): (" << shift_x << ',' << shift_y << "). (cos(-ref_yaw), sin(-ref_yaw)): (" << cos(-ref_yaw) << ',' << sin(-ref_yaw) << ")." << std::endl;
+    }
 
     return Point{result_x, result_y};
 }

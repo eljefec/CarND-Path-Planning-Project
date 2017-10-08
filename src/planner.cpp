@@ -19,6 +19,93 @@ Planner::Planner(const Map& map)
 {
 }
 
+void print(const vector<double>& ptsx, const vector<double>& ptsy, const char* func)
+{
+    cout << "print " << func << endl;
+    for (int i = 0; i < ptsx.size(); i++)
+    {
+        cout << '(' << ptsx[i] << ',' << ptsy[i] << ')' << endl;
+    }
+}
+
+bool has_spline_violation(const vector<double>& ptsx)
+{
+    for (int i = 0; i < ptsx.size() - 1; i++)
+    {
+        if (ptsx[i] > ptsx[i+1])
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void check_spline(const vector<double>& ptsx, const vector<double>& ptsy, const char* func)
+{
+    if (has_spline_violation(ptsx))
+    {
+        cout << "spline violation in " << func << endl;
+
+        for (int i = 0; i < ptsx.size(); i++)
+        {
+            cout << '(' << ptsx[i] << ',' << ptsy[i] << ')';
+
+            if ((i < ptsx.size() - 1) && ptsx[i] > ptsx[i + 1])
+            {
+                cout << " violation";
+            }
+
+            cout << endl;
+        }
+    }
+}
+
+vector<double> get_vectors(const vector<double>& v)
+{
+    vector<double> vectors;
+    for (int i = 1; i < v.size(); i++)
+    {
+        vectors.push_back(v[i] - v[i-1]);
+    }
+
+    return vectors;
+}
+
+void remove_kinks(vector<double>& x, vector<double>& y)
+{
+    auto x_vec = get_vectors(x);
+    auto y_vec = get_vectors(y);
+    Statistics x_vec_stats = calculate_stats(x_vec);
+    Statistics y_vec_stats = calculate_stats(y_vec);
+    vector<int> kink_indices;
+    for (int i = 0; i < x_vec.size(); i++)
+    {
+        auto xdiff_from_mean = x_vec[i] - x_vec_stats.mean;
+        auto ydiff_from_mean = y_vec[i] - y_vec_stats.mean;
+        if (abs(xdiff_from_mean) > (3 * x_vec_stats.stddev)
+            || abs(ydiff_from_mean) > (3 * y_vec_stats.stddev))
+        {
+            cout << "Kink: (i, x_vec[i], y_vec[i]): (" << i << x_vec[i] << y_vec[i] << "). (x_vec.mean, y_vec.mean): (" << x_vec_stats.mean << ',' << y_vec_stats.mean << ")." << endl;
+
+            kink_indices.emplace_back(i);
+        }
+    }
+
+    if (!kink_indices.empty())
+    {
+        cout << "Warn: Found kinks at i=[";
+        for (int i = kink_indices.size() - 1; i >= 0; i--)
+        {
+            auto kink = kink_indices[i];
+            cout << kink << ' ';
+            x_vec.erase(x_vec.begin() + i + 1);
+            y_vec.erase(y_vec.begin() + i + 1);
+        }
+        cout << "]." << endl;
+    }
+}
+
 vector<double> get_distances(const vector<double>& x, const vector<double>& y)
 {
     vector<double> distances;
@@ -34,7 +121,7 @@ void remove_gaps(vector<double>& x, vector<double>& y)
 {
     auto distances = get_distances(x, y);
     Statistics stats = calculate_stats(distances);
-    cout << "gap mean:" << stats.mean << ",stddev:" << stats.stddev << endl;
+    // cout << "gap mean:" << stats.mean << ",stddev:" << stats.stddev << endl;
     vector<int> gap_indices;
     double x_offset_total = 0;
     double y_offset_total = 0;
@@ -59,12 +146,13 @@ void remove_gaps(vector<double>& x, vector<double>& y)
             x_offset_total += x_offset;
             y_offset_total += y_offset;
 
-            cout << "scale:" << scale << ",offset (x,y):(" << x_offset_total << ',' << y_offset_total << ')' << endl;
+            // cout << "scale:" << scale << ",offset (x,y):(" << x_offset_total << ',' << y_offset_total << ')' << endl;
 
             gap_indices.push_back(i);
         }
     }
 
+    /*
     if (!gap_indices.empty())
     {
         cout << "Warn: Gap found at i=[";
@@ -74,6 +162,7 @@ void remove_gaps(vector<double>& x, vector<double>& y)
         }
         cout << ']' << endl;
     }
+    */
 }
 
 std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
@@ -114,6 +203,8 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
             downsampled_ptsy.erase(downsampled_ptsy.begin() + i);
         }
     }
+
+    check_spline(downsampled_ptsx, downsampled_ptsy, __func__);
 
     // Make spline out of downsampled points.
     tk::spline spline;
@@ -230,6 +321,8 @@ Path Planner::plan_path(const Telemetry& tel)
         double ref_x_prev = previous_path_x[prev_size - 2];
         double ref_y_prev = previous_path_y[prev_size - 2];
         ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
+
+        // cout << "(ref_x, ref_y): (" << ref_x << ',' << ref_y << "). (ref_x_prev, ref_y_prev): (" << ref_x_prev << ',' << ref_y_prev << "). ref_yaw: " << ref_yaw << endl;
 
         ptsx.push_back(ref_x_prev);
         ptsx.push_back(ref_x);
@@ -361,6 +454,8 @@ Path Planner::plan_path(const Telemetry& tel)
 
             // Run second time because large outlier can mask small gaps.
             remove_gaps(path.next_x_vals, path.next_y_vals);
+
+            remove_kinks(path.next_x_vals, path.next_y_vals);
         }
         else
         {
@@ -388,6 +483,18 @@ Path Planner::plan_path(const Telemetry& tel)
         ptsy.push_back(next_wp2[1]);
 
         perspective.transform_to_car(ptsx, ptsy);
+
+        // print(ptsx, ptsy, __func__);
+
+        // check_spline(ptsx, ptsy, __func__);
+
+        /*
+        if (has_spline_violation(ptsx))
+        {
+            cout << "previous path:" << endl;
+            print(previous_path_x, previous_path_y, __func__);
+        }
+        */
 
         tk::spline s;
         s.set_points(ptsx, ptsy);
