@@ -306,7 +306,7 @@ void Planner::make_smooth_path(const Perspective& perspective,
 {
     perspective.transform_to_car(ptsx, ptsy);
 
-    print(ptsx, ptsy, __func__);
+    // print(ptsx, ptsy, __func__);
 
     check_spline(ptsx, ptsy, __func__);
 
@@ -396,18 +396,6 @@ Path Planner::plan_path(const Telemetry& tel)
 
     auto forward_vehicle = env.lane_is_occupied(car_lane, 30, 0);
 
-    const double ideal_vel = 49.5;
-    const double ref_vel_inc = 0.224;
-
-    if (forward_vehicle)
-    {
-        ref_vel -= ref_vel_inc;
-    }
-    else if (ref_vel < ideal_vel)
-    {
-        ref_vel += ref_vel_inc;
-    }
-
     vector<double> ptsx;
     vector<double> ptsy;
 
@@ -490,7 +478,7 @@ Path Planner::plan_path(const Telemetry& tel)
 
             {
                 // Follow behind.
-                const double T = 2.5;
+                const double T = 2;
                 VectorXd delta(6);
                 delta << -3, 0, 0, 0, 0, 0;
                 ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
@@ -576,10 +564,21 @@ Path Planner::plan_path(const Telemetry& tel)
         else
         {
             // cout << "Follow prev path." << endl;
+
+            // Set reference velocity to velocity near end of PTG trajectory.
+            ref_vel = car_speed;
         }
     }
     else if (prev_size < c_path_size)
     {
+        const double ideal_vel = 49.5;
+        const double ref_vel_inc = 0.224;
+
+        if (ref_vel < ideal_vel)
+        {
+            ref_vel += ref_vel_inc;
+        }
+
         // Keep lane.
         if (prev_size > 0)
         {
