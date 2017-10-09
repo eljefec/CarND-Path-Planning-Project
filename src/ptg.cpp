@@ -63,11 +63,10 @@ struct PTG_Goal
 };
 
 vector<Goal> generate_goals(const PTG_Goal& ptg_goal,
+                            const int goal_samples_per_timestep,
                             double timestep = 0.5)
 {
     Stopwatch sw(__func__);
-
-    const int goal_samples = 5;
 
     vector<Goal> goals;
 
@@ -81,7 +80,7 @@ vector<Goal> generate_goals(const PTG_Goal& ptg_goal,
         auto goal_d = target_state.tail(3);
         goals.emplace_back(Goal{goal_s, goal_d, t});
 
-        auto perturbed = perturb_goal(target_state, goal_samples, t);
+        auto perturbed = perturb_goal(target_state, goal_samples_per_timestep, t);
 
         goals.insert(goals.end(), perturbed.begin(), perturbed.end());
     }
@@ -141,9 +140,11 @@ Trajectory PTG(const VectorXd& start_s,
 
     vector<TrajectoryCost> costs;
 
+    const int goal_samples_per_timestep = 10 / ptg_goals.size();
+
     for (const PTG_Goal& ptg_goal : ptg_goals)
     {
-        auto goals = generate_goals(ptg_goal);
+        auto goals = generate_goals(ptg_goal, goal_samples_per_timestep);
         auto jmts = generate_jmts(goals);
         auto trajectories = generate_trajectories(start_s, start_d, goals, jmts);
 
