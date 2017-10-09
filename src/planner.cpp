@@ -158,7 +158,7 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
     return points;
 }
 
-void follow_in_fastest_lane(const vector<unique_ptr<Vehicle>>& forward_vehicles, vector<PTG_Goal> ptg_goals)
+void follow_in_fastest_lane(const vector<unique_ptr<Vehicle>>& forward_vehicles, vector<PTG_Goal>& ptg_goals, const double T)
 {
     int fastest_lane = 0;
     for (int lane = 1; lane < 3; lane++)
@@ -207,7 +207,7 @@ Path Planner::plan_path(const Telemetry& tel)
     // cout << "car_s:" << car_s << ",car_d:" << car_d << ",car_speed:" << car_speed << endl;
     // cout << env << endl;
 
-    auto forward_vehicle = env.lane_is_occupied(car_lane);
+    auto forward_vehicle = env.lane_is_occupied(car_lane, 30, 0);
 
     const double ideal_vel = 49.5;
     const double ref_vel_inc = 0.224;
@@ -310,11 +310,11 @@ Path Planner::plan_path(const Telemetry& tel)
             }
 
             const double T = 4;
-            auto forward_vehicles = env.get_forward_vehicles();
+            auto forward_vehicles = env.get_forward_vehicles(45, 10);
 
             if (forward_vehicles[0] && forward_vehicles[1] && forward_vehicles[2])
             {
-                follow_in_fastest_lane(forward_vehicles, ptg_goals);
+                // follow_in_fastest_lane(forward_vehicles, ptg_goals, T);
             }
             else
             {
@@ -329,12 +329,18 @@ Path Planner::plan_path(const Telemetry& tel)
                 }
                 else if (!forward_vehicles[1])
                 {
+                    // Pass in middle lane.
+                    VectorXd delta(6);
+                    if (car_lane == 0)
                     {
-                        // Pass in middle lane.
-                        VectorXd delta(6);
                         delta << -3, 0, 0, 4, 0, 0;
-                        ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[0], delta, T});
                     }
+                    else if (car_lane == 2)
+                    {
+                        delta << -3, 0, 0, -4, 0, 0;
+                    }
+
+                    ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
                 }
                 else if (!forward_vehicles[2])
                 {

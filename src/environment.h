@@ -17,9 +17,9 @@ public:
                 const std::vector<std::vector<double>>& sensor_fusion,
                 size_t prev_size);
 
-    std::unique_ptr<Vehicle> lane_is_occupied(int lane) const;
+    std::unique_ptr<Vehicle> lane_is_occupied(int lane, double distance, double buffer_behind_ego) const;
 
-    std::vector<std::unique_ptr<Vehicle>> get_forward_vehicles() const;
+    std::vector<std::unique_ptr<Vehicle>> get_forward_vehicles(double distance, double buffer_behind_ego) const;
 
     std::vector<double> getFrenet(double x, double y, double theta) const;
 

@@ -23,7 +23,7 @@ Environment::Environment(const vector<double>& maps_s,
     }
 }
 
-std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane) const
+std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane, double distance, double buffer_behind_ego) const
 {
     const float lane_width = 4;
 
@@ -34,8 +34,7 @@ std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane) const
         float d = v.d;
         if (d < (lane_width * lane + lane_width) && d > (lane_width * lane))
         {
-            static const double OCCUPIED_DISTANCE = 30;
-            if ((v.s > car_s) && (v.s - car_s) < OCCUPIED_DISTANCE)
+            if ((v.s > (car_s - buffer_behind_ego)) && (v.s - car_s) < distance)
             {
                 if (forward_vehicle)
                 {
@@ -82,12 +81,12 @@ std::unique_ptr<Vehicle> Environment::lane_is_occupied(int lane) const
     return forward_vehicle;
 }
 
-vector<unique_ptr<Vehicle>> Environment::get_forward_vehicles() const
+vector<unique_ptr<Vehicle>> Environment::get_forward_vehicles(double distance, double buffer_behind_ego) const
 {
     vector<unique_ptr<Vehicle>> forward_vehicles(3);
     for (int lane = 0; lane < 3; lane++)
     {
-        auto lane_vehicle = lane_is_occupied(lane);
+        auto lane_vehicle = lane_is_occupied(lane, distance, buffer_behind_ego);
         if (lane_vehicle)
         {
             forward_vehicles[lane].reset(lane_vehicle.release());
