@@ -16,6 +16,8 @@ static const double EXPECTED_ACC_IN_ONE_SEC = 1;
 static const double EXPECTED_JERK_IN_ONE_SEC = 2;
 // 22.1 meters per second is 49.5 miles per hour.
 static const double MAX_SPEED = 20;
+// 13.4 meters per second is 30 miles per hour.
+static const double MIN_SPEED = 13.4;
 static const double MAX_ACCEL = 3;
 static const double MAX_JERK = 3;
 static const int TRAJECTORY_SAMPLES = 20;
@@ -219,7 +221,7 @@ double max_derivative_cost(const VectorXd& trajectory_coefficients,
 
 double CostFunctions::max_speed_cost()
 {
-    return max_derivative_cost(trajectory.s_coefficients, 1, goal_t, MAX_SPEED);
+    return max_derivative_cost(trajectory.s_coefficients, 1, goal_t, MAX_SPEED, MIN_SPEED);
 }
 
 double CostFunctions::max_s_accel_cost()
