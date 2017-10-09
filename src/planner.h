@@ -2,7 +2,9 @@
 #define PLANNER_H
 
 #include <vector>
+#include "perspective.h"
 #include "telemetry.h"
+#include "trajectory.h"
 
 struct Path
 {
@@ -27,6 +29,14 @@ public:
     Path plan_path(const Telemetry& telemetry);
 
 private:
+    void make_smooth_path(const Perspective& perspective,
+                          const Trajectory* p_trajectory,
+                          std::vector<double>& ptsx,
+                          std::vector<double>& ptsy,
+                          double target_x,
+                          int path_size,
+                          Path& path);
+
     const Map map;
 
     double ref_vel; // mph
