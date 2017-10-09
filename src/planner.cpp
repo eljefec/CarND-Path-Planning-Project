@@ -362,11 +362,19 @@ void Planner::make_smooth_path(const Perspective& perspective,
     }
 }
 
+bool allow_lane_change(const Map& map, double car_s)
+{
+    const double DISALLOW_ZONE = 100;
+    return (car_s > DISALLOW_ZONE
+            && car_s < (map.max_s - DISALLOW_ZONE));
+}
+
 Path Planner::plan_path(const Telemetry& tel)
 {
     double car_x = tel.car_x;
     double car_y = tel.car_y;
     double car_s = tel.car_s;
+    cout << "car_s: " << car_s << endl;
     double car_d = tel.car_d;
     double car_yaw = tel.car_yaw;
     double car_speed = tel.car_speed;
@@ -491,7 +499,7 @@ Path Planner::plan_path(const Telemetry& tel)
             {
                 // follow_in_fastest_lane(forward_vehicles, ptg_goals, T);
             }
-            else
+            else if (allow_lane_change(map, car_s))
             {
                 if (!forward_vehicles[0])
                 {
