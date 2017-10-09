@@ -44,7 +44,7 @@ bool has_spline_violation(const vector<double>& ptsx)
     return false;
 }
 
-void check_spline(const vector<double>& ptsx, const vector<double>& ptsy, const char* func)
+bool check_spline_has_violation(const vector<double>& ptsx, const vector<double>& ptsy, const char* func)
 {
     if (has_spline_violation(ptsx))
     {
@@ -236,7 +236,7 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
         }
     }
 
-    check_spline(downsampled_ptsx, downsampled_ptsy, __func__);
+    check_spline_has_violation(downsampled_ptsx, downsampled_ptsy, __func__);
 
     // Make spline out of downsampled points.
     tk::spline spline;
@@ -296,7 +296,7 @@ void follow_in_fastest_lane(const vector<unique_ptr<Vehicle>>& forward_vehicles,
     ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[fastest_lane], delta, T});
 }
 
-void Planner::make_smooth_path(const Perspective& perspective,
+bool Planner::make_smooth_path(const Perspective& perspective,
                                const Trajectory* p_trajectory,
                                vector<double>& ptsx,
                                vector<double>& ptsy,
@@ -308,7 +308,12 @@ void Planner::make_smooth_path(const Perspective& perspective,
 
     // print(ptsx, ptsy, __func__);
 
-    check_spline(ptsx, ptsy, __func__);
+    bool has_violation = check_spline_has_violation(ptsx, ptsy, __func__);
+
+    if (has_violation)
+    {
+        return false;
+    }
 
     /*
     if (has_spline_violation(ptsx))
@@ -360,6 +365,8 @@ void Planner::make_smooth_path(const Perspective& perspective,
         path.next_x_vals.push_back(new_ptsx[i]);
         path.next_y_vals.push_back(new_ptsy[i]);
     }
+
+    return true;
 }
 
 bool allow_lane_change(const Map& map, double car_s)
@@ -451,6 +458,8 @@ Path Planner::plan_path(const Telemetry& tel)
     // cout << "forward_vehicle:" << (forward_vehicle.get() != nullptr) << endl;
 
     Perspective perspective(ref_x, ref_y, ref_yaw);
+
+    bool keep_lane_with_spline = false;
 
     if (forward_vehicle)
     {
@@ -555,7 +564,12 @@ Path Planner::plan_path(const Telemetry& tel)
             double target_x = best.s_poly().evaluate(best.t);
             int path_size = best.t / PATH_SEGMENT_SECONDS;
             cout << "target_x: " << target_x << endl;
-            make_smooth_path(perspective, &best, ptsx, ptsy, target_x, path_size, path);
+            bool success = make_smooth_path(perspective, &best, ptsx, ptsy, target_x, path_size, path);
+
+            if (!success)
+            {
+                keep_lane_with_spline = true;
+            }
 
             // Convert meters per second to miles per hour.
             ref_vel = best.s_poly().differentiate().evaluate(best.t) * c_mph_to_mps;
@@ -577,12 +591,17 @@ Path Planner::plan_path(const Telemetry& tel)
             ref_vel = car_speed;
         }
     }
-    else if (prev_size < c_path_size)
+
+    if (keep_lane_with_spline || !forward_vehicle && prev_size < c_path_size)
     {
         const double ideal_vel = 49.5;
         const double ref_vel_inc = 0.224;
 
-        if (ref_vel < ideal_vel)
+        if (forward_vehicle || ref_vel > ideal_vel)
+        {
+            ref_vel -= ref_vel_inc;
+        }
+        else if (ref_vel < ideal_vel)
         {
             ref_vel += ref_vel_inc;
         }

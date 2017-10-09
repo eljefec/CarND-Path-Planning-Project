@@ -30,7 +30,7 @@ public:
     Path plan_path(const Telemetry& telemetry);
 
 private:
-    void make_smooth_path(const Perspective& perspective,
+    bool make_smooth_path(const Perspective& perspective,
                           const Trajectory* p_trajectory,
                           std::vector<double>& ptsx,
                           std::vector<double>& ptsy,
