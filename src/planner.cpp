@@ -561,6 +561,9 @@ Path Planner::plan_path(const Telemetry& tel)
             cout << "target_x: " << target_x << endl;
             make_smooth_path(perspective, &best, ptsx, ptsy, target_x, path_size, path);
 
+            // Convert meters per second to miles per hour.
+            ref_vel = best.s_poly().differentiate().evaluate(best.t) * c_mph_to_mps;
+
             /*
             remove_gaps(path.next_x_vals, path.next_y_vals);
 
