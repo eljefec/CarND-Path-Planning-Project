@@ -10,9 +10,9 @@ class Polynomial
 public:
     Polynomial(const VectorXd& coefficients);
 
-    Polynomial differentiate();
+    Polynomial differentiate() const;
 
-    double evaluate(double t);
+    double evaluate(double t) const;
 
 private:
     VectorXd coefficients;

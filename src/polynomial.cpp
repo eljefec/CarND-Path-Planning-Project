@@ -5,7 +5,7 @@ Polynomial::Polynomial(const VectorXd& coefficients)
 {
 }
 
-Polynomial Polynomial::differentiate()
+Polynomial Polynomial::differentiate() const
 {
     VectorXd derivative(coefficients.size() - 1);
     for (int i = 1; i < coefficients.size(); i++)
@@ -15,7 +15,7 @@ Polynomial Polynomial::differentiate()
     return Polynomial(derivative);
 }
 
-double Polynomial::evaluate(double t)
+double Polynomial::evaluate(double t) const
 {
     double total = 0;
     for (int i = 0; i < coefficients.size(); i++)
