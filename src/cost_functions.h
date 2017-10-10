@@ -30,8 +30,10 @@ private:
     double total_accel_cost();
     double total_jerk_cost();
     double max_speed_cost();
-    double max_accel_cost();
-    double max_jerk_cost();
+    double max_s_accel_cost();
+    double max_s_jerk_cost();
+    double max_d_accel_cost();
+    double max_d_jerk_cost();
     double offroad_cost();
     double offcenter_cost();
     double backward_cost();

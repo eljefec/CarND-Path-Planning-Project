@@ -11,13 +11,15 @@ using Eigen::VectorXd;
 using Eigen::Vector3d;
 using namespace std;
 
-static const double SAFE_VEHICLE_DISTANCE = 3;
+static const double SAFE_VEHICLE_DISTANCE = 1.5;
 static const double EXPECTED_ACC_IN_ONE_SEC = 1;
 static const double EXPECTED_JERK_IN_ONE_SEC = 2;
 // 22.1 meters per second is 49.5 miles per hour.
-static const double MAX_SPEED = 22.1;
-static const double MAX_ACCEL = 10;
-static const double MAX_JERK = 10;
+static const double MAX_SPEED = 20;
+// 13.4 meters per second is 30 miles per hour.
+static const double MIN_SPEED = 13.4;
+static const double MAX_ACCEL = 3;
+static const double MAX_JERK = 3;
 static const int TRAJECTORY_SAMPLES = 20;
 
 
@@ -48,17 +50,19 @@ double CostFunctions::cost()
 {
     using namespace std::placeholders;
 
-    std::vector<WeightedCostFunction> cost_functions = {{bind(&CostFunctions::time_diff_cost, _1), 1.0},
+    std::vector<WeightedCostFunction> cost_functions = {// {bind(&CostFunctions::time_diff_cost, _1), 1.0},
                                                         {bind(&CostFunctions::s_diff_cost, _1), 1.0},
                                                         {bind(&CostFunctions::d_diff_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::collision_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::buffer_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::collision_cost, _1), 2.0},
+                                                        {bind(&CostFunctions::buffer_cost, _1), 2.0},
                                                         {bind(&CostFunctions::efficiency_cost, _1), 1.0},
                                                         {bind(&CostFunctions::total_accel_cost, _1), 1.0},
                                                         {bind(&CostFunctions::total_jerk_cost, _1), 1.0},
                                                         {bind(&CostFunctions::max_speed_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::max_accel_cost, _1), 1.0},
-                                                        {bind(&CostFunctions::max_jerk_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::max_s_accel_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::max_s_jerk_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::max_d_accel_cost, _1), 1.0},
+                                                        {bind(&CostFunctions::max_d_jerk_cost, _1), 1.0},
                                                         // {bind(&CostFunctions::offroad_cost, _1), 1.0},
                                                         // {bind(&CostFunctions::offcenter_cost, _1), 1.0},
                                                         {bind(&CostFunctions::backward_cost, _1), 1.0}
@@ -144,7 +148,7 @@ double CostFunctions::buffer_cost()
 {
     double nearest = trajectory.nearest_approach(vehicles);
 
-    return logistic(SAFE_VEHICLE_DISTANCE / nearest);
+    return logistic(3 * SAFE_VEHICLE_DISTANCE / nearest);
 }
 
 double CostFunctions::efficiency_cost()
@@ -217,17 +221,27 @@ double max_derivative_cost(const VectorXd& trajectory_coefficients,
 
 double CostFunctions::max_speed_cost()
 {
-    return max_derivative_cost(trajectory.s_coefficients, 1, goal_t, MAX_SPEED);
+    return max_derivative_cost(trajectory.s_coefficients, 1, goal_t, MAX_SPEED, MIN_SPEED);
 }
 
-double CostFunctions::max_accel_cost()
+double CostFunctions::max_s_accel_cost()
 {
     return max_derivative_cost(trajectory.s_coefficients, 2, goal_t, MAX_ACCEL);
 }
 
-double CostFunctions::max_jerk_cost()
+double CostFunctions::max_s_jerk_cost()
 {
     return max_derivative_cost(trajectory.s_coefficients, 3, goal_t, MAX_JERK);
+}
+
+double CostFunctions::max_d_accel_cost()
+{
+    return max_derivative_cost(trajectory.d_coefficients, 2, goal_t, MAX_ACCEL);
+}
+
+double CostFunctions::max_d_jerk_cost()
+{
+    return max_derivative_cost(trajectory.d_coefficients, 3, goal_t, MAX_JERK);
 }
 
 double CostFunctions::offroad_cost()

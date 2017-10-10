@@ -12,11 +12,106 @@ using Eigen::VectorXd;
 using Eigen::Vector3d;
 
 static const double c_mph_to_mps = 2.24;
+static const int c_path_size = 50;
+static const double PATH_SEGMENT_SECONDS = 0.02;
+
 
 Planner::Planner(const Map& map)
   : map(map),
     ref_vel(49)
 {
+}
+
+void print(const vector<double>& ptsx, const vector<double>& ptsy, const char* func)
+{
+    cout << "print " << func << endl;
+    for (int i = 0; i < ptsx.size(); i++)
+    {
+        cout << '(' << ptsx[i] << ',' << ptsy[i] << ')' << endl;
+    }
+}
+
+bool has_spline_violation(const vector<double>& ptsx)
+{
+    for (int i = 0; i < ptsx.size() - 1; i++)
+    {
+        if (ptsx[i] > ptsx[i+1])
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool check_spline_has_violation(const vector<double>& ptsx, const vector<double>& ptsy, const char* func)
+{
+    if (has_spline_violation(ptsx))
+    {
+        cout << "spline violation in " << func << endl;
+
+        for (int i = 0; i < ptsx.size(); i++)
+        {
+            cout << '(' << ptsx[i] << ',' << ptsy[i] << ')';
+
+            if ((i < ptsx.size() - 1) && ptsx[i] > ptsx[i + 1])
+            {
+                cout << " violation";
+            }
+
+            cout << endl;
+        }
+    }
+}
+
+vector<double> get_vectors(const vector<double>& v)
+{
+    vector<double> vectors;
+    for (int i = 1; i < v.size(); i++)
+    {
+        vectors.push_back(v[i] - v[i-1]);
+    }
+
+    return vectors;
+}
+
+bool signs_are_different(double a, double b)
+{
+    return (a > 0 && b < 0) || (a < 0 && b > 0) || (a == 0) || (b == 0);
+}
+
+void remove_kinks(vector<double>& x, vector<double>& y)
+{
+    auto x_vec = get_vectors(x);
+    auto y_vec = get_vectors(y);
+    Statistics x_vec_stats = calculate_stats(x_vec);
+    Statistics y_vec_stats = calculate_stats(y_vec);
+    vector<int> kink_indices;
+    for (int i = 0; i < x_vec.size(); i++)
+    {
+        auto xdiff_from_mean = x_vec[i] - x_vec_stats.mean;
+        auto ydiff_from_mean = y_vec[i] - y_vec_stats.mean;
+        if (abs(xdiff_from_mean) > (3 * x_vec_stats.stddev) && signs_are_different(xdiff_from_mean, x_vec_stats.mean)
+            || abs(ydiff_from_mean) > (3 * y_vec_stats.stddev) && signs_are_different(ydiff_from_mean, y_vec_stats.mean))
+        {
+            cout << "Kink: (i, x_vec[i], y_vec[i]): (" << i << ',' << x_vec[i] << ',' << y_vec[i] << "). (x_vec.mean, y_vec.mean): (" << x_vec_stats.mean << ',' << y_vec_stats.mean << ")." << endl;
+
+            kink_indices.emplace_back(i);
+        }
+    }
+
+    if (!kink_indices.empty())
+    {
+        cout << "Warn: Found kinks at i=[";
+        for (int i = kink_indices.size() - 1; i >= 0; i--)
+        {
+            auto kink = kink_indices[i];
+            cout << kink << ' ';
+            x_vec.erase(x_vec.begin() + i + 1);
+            y_vec.erase(y_vec.begin() + i + 1);
+        }
+        cout << "]." << endl;
+    }
 }
 
 vector<double> get_distances(const vector<double>& x, const vector<double>& y)
@@ -34,7 +129,7 @@ void remove_gaps(vector<double>& x, vector<double>& y)
 {
     auto distances = get_distances(x, y);
     Statistics stats = calculate_stats(distances);
-    cout << "gap mean:" << stats.mean << ",stddev:" << stats.stddev << endl;
+    // cout << "gap mean:" << stats.mean << ",stddev:" << stats.stddev << endl;
     vector<int> gap_indices;
     double x_offset_total = 0;
     double y_offset_total = 0;
@@ -59,12 +154,13 @@ void remove_gaps(vector<double>& x, vector<double>& y)
             x_offset_total += x_offset;
             y_offset_total += y_offset;
 
-            cout << "scale:" << scale << ",offset (x,y):(" << x_offset_total << ',' << y_offset_total << ')' << endl;
+            // cout << "scale:" << scale << ",offset (x,y):(" << x_offset_total << ',' << y_offset_total << ')' << endl;
 
             gap_indices.push_back(i);
         }
     }
 
+    /*
     if (!gap_indices.empty())
     {
         cout << "Warn: Gap found at i=[";
@@ -73,6 +169,31 @@ void remove_gaps(vector<double>& x, vector<double>& y)
             cout << gap << ' ';
         }
         cout << ']' << endl;
+    }
+    */
+}
+
+void get_trajectory_points(const Trajectory& trajectory,
+                           const Environment& env,
+                           vector<double>& ptsx,
+                           vector<double>& ptsy)
+{
+    auto s_poly = trajectory.s_poly();
+    auto d_poly = trajectory.d_poly();
+
+    static const double DOWNSAMPLE_SECONDS = 1.0;
+
+    int downsample_size = trajectory.t / DOWNSAMPLE_SECONDS;
+
+    for (int i = 1; i <= downsample_size; i++)
+    {
+        double t = i * DOWNSAMPLE_SECONDS;
+        double s = s_poly.evaluate(t);
+        double d = d_poly.evaluate(t);
+        auto xy = env.getXY(s, d);
+
+        ptsx.push_back(xy[0]);
+        ptsy.push_back(xy[1]);
     }
 }
 
@@ -115,14 +236,14 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
         }
     }
 
+    check_spline_has_violation(downsampled_ptsx, downsampled_ptsy, __func__);
+
     // Make spline out of downsampled points.
     tk::spline spline;
     spline.set_points(downsampled_ptsx, downsampled_ptsy);
 
     vector<double> car_ptsx;
     vector<double> car_ptsy;
-
-    static const double PATH_SEGMENT_SECONDS = 0.02;
 
     int path_size = trajectory.t / PATH_SEGMENT_SECONDS;
 
@@ -158,6 +279,103 @@ std::vector<Point> smooth_trajectory(const Trajectory& trajectory,
     return points;
 }
 
+void follow_in_fastest_lane(const vector<unique_ptr<Vehicle>>& forward_vehicles, vector<PTG_Goal>& ptg_goals, const double T)
+{
+    int fastest_lane = 0;
+    for (int lane = 1; lane < 3; lane++)
+    {
+        if (forward_vehicles[lane]->speed > forward_vehicles[fastest_lane]->speed)
+        {
+            fastest_lane = lane;
+        }
+    }
+
+    // Follow in fastest lane.
+    VectorXd delta(6);
+    delta << -3, 0, 0, 0, 0, 0;
+    ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[fastest_lane], delta, T});
+}
+
+bool Planner::make_smooth_path(const Perspective& perspective,
+                               const Trajectory* p_trajectory,
+                               vector<double>& ptsx,
+                               vector<double>& ptsy,
+                               double target_x,
+                               int path_size,
+                               Path& path)
+{
+    perspective.transform_to_car(ptsx, ptsy);
+
+    // print(ptsx, ptsy, __func__);
+
+    bool has_violation = check_spline_has_violation(ptsx, ptsy, __func__);
+
+    if (has_violation)
+    {
+        return false;
+    }
+
+    /*
+    if (has_spline_violation(ptsx))
+    {
+        cout << "previous path:" << endl;
+        print(previous_path_x, previous_path_y, __func__);
+    }
+    */
+
+    tk::spline s;
+    s.set_points(ptsx, ptsy);
+
+    double target_y = s(target_x);
+    double target_dist = sqrt((target_x * target_x) + (target_y * target_y));
+
+    double x_add_on = 0;
+
+    vector<double> new_ptsx;
+    vector<double> new_ptsy;
+
+    for (int i = 1; i <= path_size; i++)
+    {
+        double N = 0;
+        if (p_trajectory)
+        {
+            const Polynomial s_poly = p_trajectory->s_poly();
+            double segment_length = (s_poly.evaluate(i * PATH_SEGMENT_SECONDS)
+                                     - s_poly.evaluate((i-1) * PATH_SEGMENT_SECONDS));
+            N = target_dist / segment_length;
+        }
+        else
+        {
+            N = (target_dist / (PATH_SEGMENT_SECONDS * ref_vel / c_mph_to_mps));
+        }
+
+        double x_point = x_add_on + target_x / N;
+        double y_point = s(x_point);
+
+        x_add_on = x_point;
+
+        new_ptsx.push_back(x_point);
+        new_ptsy.push_back(y_point);
+    }
+
+    perspective.transform_to_global(new_ptsx, new_ptsy);
+
+    for (int i = 0; i < new_ptsx.size(); i++)
+    {
+        path.next_x_vals.push_back(new_ptsx[i]);
+        path.next_y_vals.push_back(new_ptsy[i]);
+    }
+
+    return true;
+}
+
+bool allow_lane_change(const Map& map, double car_s)
+{
+    const double DISALLOW_ZONE = 100;
+    return (car_s > DISALLOW_ZONE
+            && car_s < (map.max_s - DISALLOW_ZONE));
+}
+
 Path Planner::plan_path(const Telemetry& tel)
 {
     double car_x = tel.car_x;
@@ -190,19 +408,7 @@ Path Planner::plan_path(const Telemetry& tel)
     // cout << "car_s:" << car_s << ",car_d:" << car_d << ",car_speed:" << car_speed << endl;
     // cout << env << endl;
 
-    auto forward_vehicle = env.lane_is_occupied(car_lane);
-
-    const double ideal_vel = 49.5;
-    const double ref_vel_inc = 0.224;
-
-    if (forward_vehicle)
-    {
-        ref_vel -= ref_vel_inc;
-    }
-    else if (ref_vel < ideal_vel)
-    {
-        ref_vel += ref_vel_inc;
-    }
+    auto forward_vehicle = env.lane_is_occupied(car_lane, 30, 0);
 
     vector<double> ptsx;
     vector<double> ptsy;
@@ -231,6 +437,8 @@ Path Planner::plan_path(const Telemetry& tel)
         double ref_y_prev = previous_path_y[prev_size - 2];
         ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
 
+        // cout << "(ref_x, ref_y): (" << ref_x << ',' << ref_y << "). (ref_x_prev, ref_y_prev): (" << ref_x_prev << ',' << ref_y_prev << "). ref_yaw: " << ref_yaw << endl;
+
         ptsx.push_back(ref_x_prev);
         ptsx.push_back(ref_x);
 
@@ -246,11 +454,11 @@ Path Planner::plan_path(const Telemetry& tel)
         path.next_y_vals.push_back(previous_path_y[i]);
     }
 
-    const int c_path_size = 50;
-
     // cout << "forward_vehicle:" << (forward_vehicle.get() != nullptr) << endl;
 
     Perspective perspective(ref_x, ref_y, ref_yaw);
+
+    bool keep_lane_with_spline = false;
 
     if (forward_vehicle)
     {
@@ -269,11 +477,11 @@ Path Planner::plan_path(const Telemetry& tel)
 
             Vector3d start_s;
             start_s << frenet[0],
-                       min(speed_estimate, abs((frenet[0] - prev_frenet[0]) / 0.02)),
+                       min(speed_estimate, abs((frenet[0] - prev_frenet[0]) / PATH_SEGMENT_SECONDS)),
                        0;
 
             // Cap d_vel to lessen oscillating path.
-            double d_vel = min(0.25, max(-0.25, (frenet[1] - prev_frenet[1]) / 0.02));
+            double d_vel = min(0.25, max(-0.25, (frenet[1] - prev_frenet[1]) / PATH_SEGMENT_SECONDS));
 
             Vector3d start_d;
             start_d << frenet[1],
@@ -286,38 +494,25 @@ Path Planner::plan_path(const Telemetry& tel)
 
             {
                 // Follow behind.
-                const double T = 2.5;
+                const double T = 2;
                 VectorXd delta(6);
                 delta << -3, 0, 0, 0, 0, 0;
                 ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
             }
 
-            auto forward_vehicles = env.get_forward_vehicles();
+            const double T = 4;
+            auto forward_vehicles = env.get_forward_vehicles(45, 10);
 
             if (forward_vehicles[0] && forward_vehicles[1] && forward_vehicles[2])
             {
-                int fastest_lane = 0;
-                for (int lane = 1; lane < 3; lane++)
-                {
-                    if (forward_vehicles[lane]->speed > forward_vehicles[fastest_lane]->speed)
-                    {
-                        fastest_lane = lane;
-                    }
-                }
-
-                // Follow in fastest lane.
-                const double T = 4;
-                VectorXd delta(6);
-                delta << -3, 0, 0, 0, 0, 0;
-                ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[fastest_lane], delta, T});
+                // follow_in_fastest_lane(forward_vehicles, ptg_goals, T);
             }
-            else
+            else if (allow_lane_change(map, car_s))
             {
                 if (!forward_vehicles[0])
                 {
                     {
                         // Pass left.
-                        const double T = 4;
                         VectorXd delta(6);
                         delta << -3, 0, 0, -4, 0, 0;
                         ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
@@ -325,19 +520,23 @@ Path Planner::plan_path(const Telemetry& tel)
                 }
                 else if (!forward_vehicles[1])
                 {
+                    // Pass in middle lane.
+                    VectorXd delta(6);
+                    if (car_lane == 0)
                     {
-                        // Pass in middle lane.
-                        const double T = 4;
-                        VectorXd delta(6);
                         delta << -3, 0, 0, 4, 0, 0;
-                        ptg_goals.emplace_back(PTG_Goal{*forward_vehicles[0], delta, T});
                     }
+                    else if (car_lane == 2)
+                    {
+                        delta << -3, 0, 0, -4, 0, 0;
+                    }
+
+                    ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
                 }
                 else if (!forward_vehicles[2])
                 {
                     {
                         // Pass right.
-                        const double T = 4;
                         VectorXd delta(6);
                         delta << -3, 0, 0, 4, 0, 0;
                         ptg_goals.emplace_back(PTG_Goal{*forward_vehicle, delta, T});
@@ -349,6 +548,7 @@ Path Planner::plan_path(const Telemetry& tel)
 
             // cout << "best.t:" << best.t << endl;
 
+            /*
             auto points = smooth_trajectory(best, env, perspective, ptsx, ptsy);
 
             for (const auto& p : points)
@@ -356,19 +556,61 @@ Path Planner::plan_path(const Telemetry& tel)
                 path.next_x_vals.push_back(p.x);
                 path.next_y_vals.push_back(p.y);
             }
+            */
 
+            get_trajectory_points(best, env, ptsx, ptsy);
+
+            double target_x = best.s_poly().evaluate(best.t);
+            int path_size = best.t / PATH_SEGMENT_SECONDS;
+            cout << "target_x: " << target_x << endl;
+            bool success = make_smooth_path(perspective, &best, ptsx, ptsy, target_x, path_size, path);
+
+            if (success)
+            {
+                // Convert meters per second to miles per hour.
+                double dist = distance(path.next_x_vals[path.next_x_vals.size() - 1],
+                                       path.next_y_vals[path.next_y_vals.size() - 1],
+                                       path.next_x_vals[path.next_x_vals.size() - 2],
+                                       path.next_y_vals[path.next_y_vals.size() - 2]);
+
+                // Update ref_vel for smooth transition to "keep lane with spline".
+                ref_vel = dist / PATH_SEGMENT_SECONDS * c_mph_to_mps;
+                cout << "ref_vel: " << ref_vel << "dist: " << dist << endl;
+            }
+            else
+            {
+                keep_lane_with_spline = true;
+            }
+
+            /*
             remove_gaps(path.next_x_vals, path.next_y_vals);
+
+            remove_kinks(path.next_x_vals, path.next_y_vals);
 
             // Run second time because large outlier can mask small gaps.
             remove_gaps(path.next_x_vals, path.next_y_vals);
+            */
         }
         else
         {
             // cout << "Follow prev path." << endl;
         }
     }
-    else if (prev_size < c_path_size)
+
+    if (keep_lane_with_spline || !forward_vehicle && prev_size < c_path_size)
     {
+        const double ideal_vel = 49.5;
+        const double ref_vel_inc = 0.224;
+
+        if (forward_vehicle || ref_vel > ideal_vel)
+        {
+            ref_vel -= ref_vel_inc;
+        }
+        else if (ref_vel < ideal_vel)
+        {
+            ref_vel += ref_vel_inc;
+        }
+
         // Keep lane.
         if (prev_size > 0)
         {
@@ -387,44 +629,18 @@ Path Planner::plan_path(const Telemetry& tel)
         ptsy.push_back(next_wp1[1]);
         ptsy.push_back(next_wp2[1]);
 
-        perspective.transform_to_car(ptsx, ptsy);
-
-        tk::spline s;
-        s.set_points(ptsx, ptsy);
-
         double target_x = 30.0;
-        double target_y = s(target_x);
-        double target_dist = sqrt((target_x * target_x) + (target_y * target_y));
+        int path_size = c_path_size - previous_path_x.size();
+        make_smooth_path(perspective, nullptr, ptsx, ptsy, target_x, path_size, path);
 
-        double x_add_on = 0;
-
-        vector<double> new_ptsx;
-        vector<double> new_ptsy;
-
-        for (int i = 1; i <= c_path_size - previous_path_x.size(); i++)
-        {
-            double N = (target_dist / (0.02 * ref_vel / c_mph_to_mps));
-            double x_point = x_add_on + target_x / N;
-            double y_point = s(x_point);
-
-            x_add_on = x_point;
-
-            new_ptsx.push_back(x_point);
-            new_ptsy.push_back(y_point);
-        }
-
-        perspective.transform_to_global(new_ptsx, new_ptsy);
-
-        for (int i = 0; i < new_ptsx.size(); i++)
-        {
-            path.next_x_vals.push_back(new_ptsx[i]);
-            path.next_y_vals.push_back(new_ptsy[i]);
-        }
-
+        /*
         remove_gaps(path.next_x_vals, path.next_y_vals);
+
+        remove_kinks(path.next_x_vals, path.next_y_vals);
 
         // Run second time because large outlier can mask small gaps.
         remove_gaps(path.next_x_vals, path.next_y_vals);
+        */
     }
 
     return path;
