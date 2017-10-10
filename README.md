@@ -1,5 +1,35 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
+
+My path planner drove 10 miles without incident in [this video](https://youtu.be/tQBUY1Vmz2U).
+
+# Path Generation
+
+## Lane Keeping with Clear Lane
+For lane keeping with a clear lane, my path planner fits a spline to waypoints along the current lane.
+
+## Path Planning when Lane Has Vehicle
+When there is a vehicle in the car's lane, my path planner decides the best course of action:
+- If all 3 lanes have vehicles, then follow the car in front.
+- If there is an open lane, then change lanes towards that open lane one lane at a time.
+
+To generate smooth and safe trajectories when changing lanes or following a car, I use polynomial trajectory generation (PTG) as described in [Optimal Trajectory Generation for Dynamic Street Scenarios in a Frenet Frame](https://www.researchgate.net/publication/224156269_Optimal_Trajectory_Generation_for_Dynamic_Street_Scenarios_in_a_Frenet_Frame).
+
+### Polynomial Trajectory Generation
+My path planner follows these steps for PTG:
+1. Specify goal states in Frenet frame (e.g., "in 4 seconds, be 3 meters behind the car in front").
+2. Generate perturbed goal states with different goal times and final location states.
+3. Calculate jerk-minimizing trajectory for each goal state.
+4. Calculate cost of each trajectory with cost functions that reward being close to the goal location state and penalize negative properties like high jerk.
+5. Select trajectory with lowest cost.
+
+### Converting Frenet Trajectory into Global Frame
+My path planner converts a generated trajectory into global (x,y) path points by these steps:
+1. Convert a few waypoints from Frenet (s,d) frame to global (x,y) frame.
+2. Fit a spline to the global (x,y) waypoints. 
+3. Interpolate (x,y) points along the spline by following the distance swept along s(t). This is critical for preserving the velocity and acceleration profile of the (s,d) trajectory.
+
+# Original Project Description
    
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
