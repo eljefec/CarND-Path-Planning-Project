@@ -381,7 +381,6 @@ Path Planner::plan_path(const Telemetry& tel)
     double car_x = tel.car_x;
     double car_y = tel.car_y;
     double car_s = tel.car_s;
-    cout << "car_s: " << car_s << endl;
     double car_d = tel.car_d;
     double car_yaw = tel.car_yaw;
     double car_speed = tel.car_speed;
@@ -566,13 +565,22 @@ Path Planner::plan_path(const Telemetry& tel)
             cout << "target_x: " << target_x << endl;
             bool success = make_smooth_path(perspective, &best, ptsx, ptsy, target_x, path_size, path);
 
-            if (!success)
+            if (success)
+            {
+                // Convert meters per second to miles per hour.
+                double dist = distance(path.next_x_vals[path.next_x_vals.size() - 1],
+                                       path.next_y_vals[path.next_y_vals.size() - 1],
+                                       path.next_x_vals[path.next_x_vals.size() - 2],
+                                       path.next_y_vals[path.next_y_vals.size() - 2]);
+
+                // Update ref_vel for smooth transition to "keep lane with spline".
+                ref_vel = dist / PATH_SEGMENT_SECONDS * c_mph_to_mps;
+                cout << "ref_vel: " << ref_vel << "dist: " << dist << endl;
+            }
+            else
             {
                 keep_lane_with_spline = true;
             }
-
-            // Convert meters per second to miles per hour.
-            ref_vel = best.s_poly().differentiate().evaluate(best.t) * c_mph_to_mps;
 
             /*
             remove_gaps(path.next_x_vals, path.next_y_vals);
@@ -586,9 +594,6 @@ Path Planner::plan_path(const Telemetry& tel)
         else
         {
             // cout << "Follow prev path." << endl;
-
-            // Set reference velocity to velocity near end of PTG trajectory.
-            ref_vel = car_speed;
         }
     }
 
