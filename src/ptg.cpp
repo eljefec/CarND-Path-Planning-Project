@@ -159,7 +159,7 @@ std::unique_ptr<Trajectory> PTG(const VectorXd& start_s,
             // cout << "cost:" << eval.cost << endl;
             if (eval.feasible)
             {
-                costs.emplace_back(TrajectoryCost{trajectory, cost});
+                costs.emplace_back(TrajectoryCost{trajectory, eval.cost});
             }
         }
     }

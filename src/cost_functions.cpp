@@ -218,8 +218,6 @@ double CostFunctions::max_derivative_cost(const VectorXd& trajectory_coefficient
         double value = derivative.evaluate(t);
         if (abs(value) > max)
         {
-            cout << "max exceeded" << endl;
-            feasible = false;
             return 1;
         }
         if (value < min)
@@ -296,8 +294,6 @@ double CostFunctions::backward_cost()
         double value = s_trajectory.evaluate(t);
         if (value < prev_value)
         {
-            cout << "backwards" << endl;
-            feasible = false;
             return 1;
         }
         prev_value = value;

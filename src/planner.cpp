@@ -544,7 +544,7 @@ Path Planner::plan_path(const Telemetry& tel)
                 }
             }
 
-            Trajectory best = PTG(start_s, start_d, ptg_goals, env.get_vehicles());
+            std::unique_ptr<Trajectory> p_best = PTG(start_s, start_d, ptg_goals, env.get_vehicles());
 
             // cout << "best.t:" << best.t << endl;
 
@@ -558,24 +558,33 @@ Path Planner::plan_path(const Telemetry& tel)
             }
             */
 
-            get_trajectory_points(best, env, ptsx, ptsy);
-
-            double target_x = best.s_poly().evaluate(best.t);
-            int path_size = best.t / PATH_SEGMENT_SECONDS;
-            cout << "target_x: " << target_x << endl;
-            bool success = make_smooth_path(perspective, &best, ptsx, ptsy, target_x, path_size, path);
-
-            if (success)
+            if (p_best)
             {
-                // Convert meters per second to miles per hour.
-                double dist = distance(path.next_x_vals[path.next_x_vals.size() - 1],
-                                       path.next_y_vals[path.next_y_vals.size() - 1],
-                                       path.next_x_vals[path.next_x_vals.size() - 2],
-                                       path.next_y_vals[path.next_y_vals.size() - 2]);
+                const Trajectory& best = *p_best;
 
-                // Update ref_vel for smooth transition to "keep lane with spline".
-                ref_vel = dist / PATH_SEGMENT_SECONDS * c_mph_to_mps;
-                cout << "ref_vel: " << ref_vel << "dist: " << dist << endl;
+                get_trajectory_points(best, env, ptsx, ptsy);
+
+                double target_x = best.s_poly().evaluate(best.t);
+                int path_size = best.t / PATH_SEGMENT_SECONDS;
+                cout << "target_x: " << target_x << endl;
+                bool success = make_smooth_path(perspective, &best, ptsx, ptsy, target_x, path_size, path);
+
+                if (success)
+                {
+                    // Convert meters per second to miles per hour.
+                    double dist = distance(path.next_x_vals[path.next_x_vals.size() - 1],
+                                           path.next_y_vals[path.next_y_vals.size() - 1],
+                                           path.next_x_vals[path.next_x_vals.size() - 2],
+                                           path.next_y_vals[path.next_y_vals.size() - 2]);
+
+                    // Update ref_vel for smooth transition to "keep lane with spline".
+                    ref_vel = dist / PATH_SEGMENT_SECONDS * c_mph_to_mps;
+                    cout << "ref_vel: " << ref_vel << "dist: " << dist << endl;
+                }
+                else
+                {
+                    keep_lane_with_spline = true;
+                }
             }
             else
             {
